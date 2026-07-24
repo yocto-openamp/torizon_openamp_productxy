@@ -4,7 +4,8 @@
 # Host-side cross-compilation is the more common workflow; install these
 # packages only when on-target development is explicitly required.
 
-IMAGE_INSTALL:append = " \
+# Core tools for on-target Zephyr firmware workflows
+PRODUCTXY_IMAGE_INSTALL_CORE = " \
     git \
     python3 \
     python3-pip \
@@ -24,13 +25,13 @@ IMAGE_INSTALL:append = " \
     uv \
 "
 
-# dpkg
-IMAGE_INSTALL:append = " \
+# Package manager tools
+PRODUCTXY_IMAGE_INSTALL_DPKG = " \
     dpkg \
 "
 
-# For C/C++ running on torizon
-IMAGE_INSTALL:append = " \
+# Toolchain for native C/C++ builds on target
+PRODUCTXY_IMAGE_INSTALL_NATIVE_BUILD = " \
     gcc \
     g++ \
     make \
@@ -38,8 +39,8 @@ IMAGE_INSTALL:append = " \
     ninja \
 "
 
-# For Zephyr M7 builds
-IMAGE_INSTALL:append = " \
+# Extra dependencies often required by Zephyr build tooling
+PRODUCTXY_IMAGE_INSTALL_ZEPHYR_DEPS = " \
     pkgconfig \
     libffi-dev \
     libssl-dev \
@@ -48,6 +49,13 @@ IMAGE_INSTALL:append = " \
     unzip \
     patch \
     rsync \
+"
+
+IMAGE_INSTALL:append = " \
+    ${PRODUCTXY_IMAGE_INSTALL_CORE} \
+    ${PRODUCTXY_IMAGE_INSTALL_DPKG} \
+    ${PRODUCTXY_IMAGE_INSTALL_NATIVE_BUILD} \
+    ${PRODUCTXY_IMAGE_INSTALL_ZEPHYR_DEPS} \
 "
 
 IMAGE_INSTALL:append:verdin-imx8mp = " imx-m7-demos kernel-module-netconsole example rpmsgclientsample"
