@@ -5,16 +5,4 @@ EULA="1"
 . layers/meta-toradex-torizon/scripts/setup-environment $@
 
 # Ensure our custom layer is always active for this build directory.
-_AUTO_CONF="${BUILDDIR}/conf/auto.conf"
-
-if [ -f "${_AUTO_CONF}" ]; then
-	if grep -q '^EXTRALAYERS *= *"' "${_AUTO_CONF}"; then
-		if ! grep -q 'meta-productxy' "${_AUTO_CONF}"; then
-			sed -i '/^EXTRALAYERS *= *"/ s|"$| ${OEROOT}/layers/meta-productxy"|' "${_AUTO_CONF}"
-		fi
-	else
-		cat >> "${_AUTO_CONF}" <<'EOF'
-EXTRALAYERS = " ${OEROOT}/layers/meta-productxy"
-EOF
-	fi
-fi
+bitbake-layers add-layer /workdir/torizon/layers/meta-productxy
