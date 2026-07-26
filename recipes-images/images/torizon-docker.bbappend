@@ -39,32 +39,20 @@ PRODUCTXY_IMAGE_INSTALL_NATIVE_BUILD = " \
     ninja \
 "
 
-# Extra dependencies often required by Zephyr build tooling
-PRODUCTXY_IMAGE_INSTALL_ZEPHYR_DEPS = " \
-    pkgconfig \
-    libffi-dev \
-    libssl-dev \
-    zlib1g-dev \
-    bzip2 \
-    unzip \
-    patch \
-    rsync \
-"
 
 IMAGE_INSTALL:append = " \
     ${PRODUCTXY_IMAGE_INSTALL_CORE} \
     ${PRODUCTXY_IMAGE_INSTALL_DPKG} \
     ${PRODUCTXY_IMAGE_INSTALL_NATIVE_BUILD} \
-    ${PRODUCTXY_IMAGE_INSTALL_ZEPHYR_DEPS} \
 "
 
 IMAGE_INSTALL:append:verdin-imx8mp = " imx-m7-demos kernel-module-netconsole example rpmsgclientsample"
 
-# Files already included in Zephyr SDK
-#    gcc \
-#    g++ \
-#    binutils \
-#    make \
-#    cmake \
-#    ninja \
-#
+# Allow the torizon user to run sudo without password prompts.
+ROOTFS_POSTPROCESS_COMMAND:append = " productxy_enable_torizon_passwordless_sudo;"
+
+productxy_enable_torizon_passwordless_sudo() {
+    install -d ${IMAGE_ROOTFS}${sysconfdir}/sudoers.d
+    echo 'torizon ALL=(ALL) NOPASSWD: ALL' > ${IMAGE_ROOTFS}${sysconfdir}/sudoers.d/99-torizon-nopasswd
+    chmod 0440 ${IMAGE_ROOTFS}${sysconfdir}/sudoers.d/99-torizon-nopasswd
+}
