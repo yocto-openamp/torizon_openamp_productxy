@@ -1,13 +1,16 @@
-SUMMARY = "bitbake-layers recipe"
-DESCRIPTION = "Recipe created by bitbake-layers"
+SUMMARY = "Simple example executable"
+DESCRIPTION = "Installs a minimal example command"
 LICENSE = "MIT"
 
-python do_display_banner() {
-    bb.plain("***********************************************");
-    bb.plain("*                                             *");
-    bb.plain("*  Example recipe created by bitbake-layers   *");
-    bb.plain("*                                             *");
-    bb.plain("***********************************************");
+S = "${WORKDIR}"
+
+do_install() {
+    install -d ${D}${bindir}
+    cat > ${D}${bindir}/example << 'EOF'
+#!/bin/sh
+echo "example from meta-productxy"
+EOF
+    chmod 0755 ${D}${bindir}/example
 }
 
-addtask display_banner before do_build
+FILES:${PN} = "${bindir}/example"
