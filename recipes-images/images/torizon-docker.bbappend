@@ -37,6 +37,7 @@ PRODUCTXY_IMAGE_INSTALL_NATIVE_BUILD = " \
     make \
     cmake \
     ninja \
+    ccache \
 "
 
 
