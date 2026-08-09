@@ -23,6 +23,7 @@ PRODUCTXY_IMAGE_INSTALL_CORE = " \
     gperf \
     openocd \
     uv \
+    tio \
 "
 
 # Package manager tools
