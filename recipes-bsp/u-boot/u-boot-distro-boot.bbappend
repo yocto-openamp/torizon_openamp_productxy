@@ -1,4 +1,7 @@
-# RemoteProc on Verdin iMX8MP needs this kernel cmdline argument.
+# Select the non-WiFi Mallow device tree and enable the HMP overlay.
+# https://git.toradex.com/cgit/linux-toradex.git/tree/arch/arm64/boot/dts/freescale/imx8mp-verdin-mallow.dtsi
+UENV_EXTRA_CONFIGS:verdin-imx8mp = "env set fdtfile imx8mp-verdin-nonwifi-mallow.dtb; env set fdt_overlays verdin-imx8mp_hmp_overlay.dtbo"
+
 # See: https://developer.toradex.com/software/hmp/hmp-nxp/how-to-use-remoteproc/
 
 # In Torizon's u-boot-distro-boot flow, final bootargs are assembled from

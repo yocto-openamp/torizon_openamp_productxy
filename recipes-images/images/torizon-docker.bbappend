@@ -21,6 +21,8 @@ PRODUCTXY_IMAGE_INSTALL_CORE = " \
     xz \
     file \
     gperf \
+    libgpiod \
+    libgpiod-tools \
     openocd \
     uv \
     tio \
@@ -40,7 +42,7 @@ PRODUCTXY_IMAGE_INSTALL_NATIVE_BUILD = " \
     ninja \
     ccache \
 "
-
+PRODUCTXY_IMAGE_INSTALL_NATIVE_BUILD = ""
 
 IMAGE_INSTALL:append = " \
     ${PRODUCTXY_IMAGE_INSTALL_CORE} \
