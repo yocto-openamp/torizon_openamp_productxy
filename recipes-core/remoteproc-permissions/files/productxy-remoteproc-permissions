@@ -1,0 +1,8 @@
+#!/bin/sh
+
+for path in \
+    /sys/class/remoteproc/remoteproc0/state \
+    /sys/class/remoteproc/remoteproc0/firmware \
+    /sys/module/firmware_class/parameters/path; do
+    [ -e "$path" ] && chown torizon:torizon "$path"
+done

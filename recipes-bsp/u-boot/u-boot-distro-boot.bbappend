@@ -7,7 +7,6 @@ UENV_EXTRA_CONFIGS:verdin-imx8mp = "env set fdtfile imx8mp-verdin-nonwifi-mallow
 # In Torizon's u-boot-distro-boot flow, final bootargs are assembled from
 # uEnv variables (torizon_bootargs_l/r and tdxargs), not from APPEND.
 do_compile:append:verdin-imx8mp() {
-	if ! grep -q '^torizon_bootargs_r=.*clk-imx8mp.mcore_booted=1' uEnv.txt; then
-		echo 'torizon_bootargs_r=${torizon_bootargs_r} clk-imx8mp.mcore_booted=1' >> uEnv.txt
-	fi
+	sed -i '/^torizon_bootargs_r=.*clk-imx8mp\.mcore_booted=1/d' uEnv.txt
+	echo 'torizon_bootargs_r=clk-imx8mp.mcore_booted=1' >> uEnv.txt
 }

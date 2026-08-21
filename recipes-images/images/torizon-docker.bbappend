@@ -50,7 +50,7 @@ IMAGE_INSTALL:append = " \
     ${PRODUCTXY_IMAGE_INSTALL_NATIVE_BUILD} \
 "
 
-IMAGE_INSTALL:append:verdin-imx8mp = " imx-m7-demos kernel-module-netconsole kernel-module-imx-rpmsg-pingpong rpmsg-client-sample kernel-module-rpmsg-tty example rpmsgclientsample"
+IMAGE_INSTALL:append:verdin-imx8mp = " imx-m7-demos kernel-module-netconsole kernel-module-imx-rpmsg-pingpong rpmsg-client-sample kernel-module-rpmsg-tty example rpmsgclientsample remoteproc-permissions"
 
 # Allow the torizon user to run sudo without password prompts.
 ROOTFS_POSTPROCESS_COMMAND:append = " productxy_enable_torizon_passwordless_sudo; productxy_disable_torizon_password_expire_on_first_login;"
