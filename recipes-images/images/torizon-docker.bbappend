@@ -18,6 +18,7 @@ PRODUCTXY_IMAGE_INSTALL_CORE = " \
     dtc \
     wget \
     curl \
+    dnsmasq \
     xz \
     file \
     gperf \
@@ -53,12 +54,35 @@ IMAGE_INSTALL:append = " \
 IMAGE_INSTALL:append:verdin-imx8mp = " imx-m7-demos kernel-module-netconsole kernel-module-imx-rpmsg-pingpong rpmsg-client-sample kernel-module-rpmsg-tty example rpmsgclientsample remoteproc-permissions"
 
 # Allow the torizon user to run sudo without password prompts.
-ROOTFS_POSTPROCESS_COMMAND:append = " productxy_enable_torizon_passwordless_sudo; productxy_disable_torizon_password_expire_on_first_login;"
+ROOTFS_POSTPROCESS_COMMAND:append = " productxy_enable_torizon_passwordless_sudo; productxy_enable_enp1s0_shared_dhcp; productxy_disable_torizon_password_expire_on_first_login;"
 
 productxy_enable_torizon_passwordless_sudo() {
     install -d ${IMAGE_ROOTFS}${sysconfdir}/sudoers.d
     echo 'torizon ALL=(ALL) NOPASSWD: ALL' > ${IMAGE_ROOTFS}${sysconfdir}/sudoers.d/99-torizon-nopasswd
     chmod 0440 ${IMAGE_ROOTFS}${sysconfdir}/sudoers.d/99-torizon-nopasswd
+}
+
+productxy_enable_enp1s0_shared_dhcp() {
+    install -d ${IMAGE_ROOTFS}${sysconfdir}/NetworkManager/system-connections
+    cat > ${IMAGE_ROOTFS}${sysconfdir}/NetworkManager/system-connections/enp1s0-shared.nmconnection <<'EOF'
+[connection]
+id=enp1s0-shared
+type=ethernet
+interface-name=enp1s0
+autoconnect=true
+
+[ethernet]
+
+[ipv4]
+method=shared
+address1=192.168.50.1/24
+
+[ipv6]
+method=disabled
+
+[proxy]
+EOF
+    chmod 0600 ${IMAGE_ROOTFS}${sysconfdir}/NetworkManager/system-connections/enp1s0-shared.nmconnection
 }
 
 # Skip first-boot password expiration enforced by torizon-users postinstall.
