@@ -38,4 +38,42 @@ Run 'bitbake-layers add-layer meta-productxy'
 II. Misc
 ========
 
---- replace with specific information about the meta-productxy layer ---
+On Verdin iMX8MP with the Mallow device tree, the device-tree-overlays recipe
+builds and enables verdin-imx8mp_spi1-gpio_overlay.dtbo. The u-boot-distro-boot
+configuration also loads it after the existing HMP overlay.
+
+Despite the retained spi1-gpio filename, this overlay now releases SPI_1
+(ecspi1) for the M7, not Linux GPIO use. It disables the Linux SPI controller,
+including spidev and the Mallow TPM, and does not apply pin mux settings.
+The M7 firmware must configure ECSPI1 clocks, pad mux/control and chip selects:
+
+  SODIMM 196: GPIO5_IO06 (SPI_1 clock)
+  SODIMM 200: GPIO5_IO07 (SPI_1 MOSI)
+  SODIMM 198: GPIO5_IO08 (SPI_1 MISO)
+  SODIMM 202: GPIO5_IO09 (SPI_1 chip select 0)
+  SODIMM  64: GPIO3_IO16 (Mallow TPM chip select 1)
+
+Use the ECSPI1 alternate functions for clock, MOSI and MISO. SODIMM 202 can
+use GPIO5_IO09 or ECSPI1_SS0, depending on the M7 driver. SODIMM 64 is the
+TPM chip-select connection in the Mallow design; keep it inactive (high)
+when addressing another SPI device if the TPM is populated.
+
+Linux GPIO controllers remain enabled because other board functions use
+them. This overlay does not enforce exclusive M7 access to individual GPIO
+lines: do not use gpioset/gpioget or bind Linux drivers to these five pins.
+Do not reset an entire shared GPIO bank from M7 firmware.
+
+Build in the configured Yocto environment:
+
+  bitbake device-tree-overlays u-boot-distro-boot
+  bitbake torizon-docker
+
+Deploy the rebuilt image and reboot. Verify with:
+
+  gpioinfo | grep -E 'SODIMM_(196|200|198|202|64)"'
+
+The lines should have no Linux consumer. /dev/spidev1.0 should no longer
+exist. Verify SPI transfers using the M7 firmware and a logic analyzer;
+the Linux overlay alone does not initialize or test M7 SPI operation.
+
+Do not enable another overlay that re-enables ecspi1 after this overlay.

@@ -1,4 +1,4 @@
-# Enable Toradex HMP (remoteproc/RPMsg) overlay on Verdin iMX8MP.
+# Enable Toradex HMP and release SPI_1 for M7 use on Verdin iMX8MP.
 #
 # Source overlay (from device-tree-overlays.git):
 #   overlays/verdin-imx8mp_hmp_overlay.dts
@@ -17,4 +17,12 @@
 # 	verdin-imx8mp_dsi-to-hdmi_overlay.dtbo \
 # 	verdin-imx8mp_spidev_overlay.dtbo \
 # 	verdin-imx8mp_hmp_overlay.dtbo"
-TEZI_EXTERNAL_KERNEL_DEVICETREE_BOOT:append:verdin-imx8mp = " verdin-imx8mp_hmp_overlay.dtbo"
+FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
+
+SRC_URI:append:verdin-imx8mp = " file://verdin-imx8mp_spi1-gpio_overlay.dts"
+
+do_collect_overlays:append:verdin-imx8mp() {
+	install -m 0644 ${WORKDIR}/verdin-imx8mp_spi1-gpio_overlay.dts ${DT_FILES_PATH}/
+}
+
+TEZI_EXTERNAL_KERNEL_DEVICETREE_BOOT:append:verdin-imx8mp = " verdin-imx8mp_hmp_overlay.dtbo verdin-imx8mp_spi1-gpio_overlay.dtbo"

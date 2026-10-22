@@ -1,6 +1,6 @@
-# Select the non-WiFi Mallow device tree and enable the HMP overlay.
+# Select the non-WiFi Mallow device tree and enable HMP and SPI_1 M7 handoff.
 # https://git.toradex.com/cgit/linux-toradex.git/tree/arch/arm64/boot/dts/freescale/imx8mp-verdin-mallow.dtsi
-UENV_EXTRA_CONFIGS:verdin-imx8mp = "env set fdtfile imx8mp-verdin-nonwifi-mallow.dtb; env set fdt_overlays verdin-imx8mp_hmp_overlay.dtbo"
+UENV_EXTRA_CONFIGS:verdin-imx8mp = "env set fdtfile imx8mp-verdin-nonwifi-mallow.dtb; env set fdt_overlays verdin-imx8mp_hmp_overlay.dtbo verdin-imx8mp_spi1-gpio_overlay.dtbo"
 
 # See: https://developer.toradex.com/software/hmp/hmp-nxp/how-to-use-remoteproc/
 

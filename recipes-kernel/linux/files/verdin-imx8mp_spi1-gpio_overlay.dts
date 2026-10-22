@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "toradex,verdin-imx8mp";
+};
+
+/* M7 firmware owns ECSPI1 clocks, pin muxing and both chip selects. */
+&ecspi1 {
+	status = "disabled";
+};
