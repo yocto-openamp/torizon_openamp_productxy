@@ -77,3 +77,26 @@ exist. Verify SPI transfers using the M7 firmware and a logic analyzer;
 the Linux overlay alone does not initialize or test M7 SPI operation.
 
 Do not enable another overlay that re-enables ecspi1 after this overlay.
+
+SHT40 sensors
+=============
+
+verdin-imx8mp_sht40_overlay.dtbo adds two Sensirion SHT40 temperature and
+humidity sensors at 7-bit addresses 0x44 and 0x45 on Verdin I2C_1 (&i2c4,
+Linux i2c-3). SDA is Mallow X10-10 / SODIMM 12; SCL is X10-11 / SODIMM 14.
+These X10 signals use 1.8 V logic. Use compatible supply and pull-up voltages.
+The sensors need different factory-fixed address variants.
+
+The overlay is enabled in both the TEZI boot overlay list and uEnv.txt.
+sht4x.cfg selects the hwmon driver as a module, and torizon-docker includes
+kernel-module-sht4x. After rebuilding and deploying the image, readings are
+available at:
+
+  /sys/bus/i2c/devices/3-0044/hwmon/hwmon*/temp1_input
+  /sys/bus/i2c/devices/3-0044/hwmon/hwmon*/humidity1_input
+  /sys/bus/i2c/devices/3-0045/hwmon/hwmon*/temp1_input
+  /sys/bus/i2c/devices/3-0045/hwmon/hwmon*/humidity1_input
+
+Temperature is in millidegrees Celsius; humidity is in milli-percent RH.
+The driver caches measurements for at least two seconds. Do not rely on
+fixed hwmon indices or access the sensors with raw I2C commands while bound.

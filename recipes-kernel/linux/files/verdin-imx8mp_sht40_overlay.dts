@@ -1,0 +1,24 @@
+// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "toradex,verdin-imx8mp";
+};
+
+/* Verdin I2C_1: SDA on SODIMM 12, SCL on SODIMM 14 (Mallow X10). */
+&i2c4 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "okay";
+
+	sensor@44 {
+		compatible = "sensirion,sht4x";
+		reg = <0x44>;
+	};
+
+	sensor@45 {
+		compatible = "sensirion,sht4x";
+		reg = <0x45>;
+	};
+};
