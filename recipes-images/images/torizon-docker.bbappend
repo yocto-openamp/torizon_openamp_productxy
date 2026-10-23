@@ -62,7 +62,7 @@ IMAGE_INSTALL:append = " \
     ${PRODUCTXY_IMAGE_INSTALL_DEV} \
 "
 
-IMAGE_INSTALL:append:verdin-imx8mp = " imx-m7-demos kernel-module-netconsole kernel-module-imx-rpmsg-pingpong rpmsg-client-sample kernel-module-rpmsg-tty example rpmsgclientsample remoteproc-permissions"
+IMAGE_INSTALL:append:verdin-imx8mp = " imx-m7-demos kernel-module-netconsole kernel-module-imx-rpmsg-pingpong rpmsg-client-sample kernel-module-rpmsg-tty example rpmsgclientsample remoteproc-permissions dive"
 IMAGE_INSTALL:append:verdin-imx8mp = " kernel-module-sht4x"
 
 # Allow the torizon user to run sudo without password prompts.
