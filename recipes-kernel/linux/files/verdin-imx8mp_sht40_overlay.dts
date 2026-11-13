@@ -17,8 +17,11 @@
 		reg = <0x44>;
 	};
 
+	/*
+	The humidity sensor on Mallow Breakout Board v0.3 from 2026-11-10 was NOT populated
 	sensor@45 {
 		compatible = "sensirion,sht4x";
 		reg = <0x45>;
 	};
+	*/
 };
