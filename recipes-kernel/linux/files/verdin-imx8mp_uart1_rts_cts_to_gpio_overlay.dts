@@ -10,18 +10,3 @@
 &uart1 {
     uart-has-rtscts = <0>;
 };
-
-/* Reconfigure SODIMM 133 (UART1_RTS) and SODIMM 135 (UART1_CTS) as GPIO */
-&iomuxc {
-    pinctrl_uart1_gpio: uart1_gpio_grp {
-        fsl,pins = <
-            0x220 0x480 5 0 0 0x1c4	/* UART1_RTS -> GPIO4_IO20 - SODIMM 133 */
-            0x224 0x484 5 0 0 0x1c4	/* UART1_CTS -> GPIO4_IO21 - SODIMM 135 */
-        >;
-    };
-};
-
-&gpio4 {
-    pinctrl-names = "default";
-    pinctrl-0 = <&pinctrl_uart1_gpio>;
-};

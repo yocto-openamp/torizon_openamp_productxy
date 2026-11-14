@@ -10,18 +10,3 @@
 &uart2 {
     uart-has-rtscts = <0>;
 };
-
-/* Reconfigure SODIMM 141 (UART2_RTS) and SODIMM 143 (UART2_CTS) as GPIO */
-&iomuxc {
-    pinctrl_uart2_gpio: uart2_gpio_grp {
-        fsl,pins = <
-            0x0A8 0x308 5 0 0 0x1c4	/* UART2_RTS -> GPIO1_IO15 - SODIMM 141 */
-            0x0A4 0x304 5 0 0 0x1c4	/* UART2_CTS -> GPIO1_IO14 - SODIMM 143 */
-        >;
-    };
-};
-
-&gpio1 {
-    pinctrl-names = "default";
-    pinctrl-0 = <&pinctrl_uart2_gpio>;
-};
