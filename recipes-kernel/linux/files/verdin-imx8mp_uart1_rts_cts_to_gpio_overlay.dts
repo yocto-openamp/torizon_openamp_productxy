@@ -15,8 +15,8 @@
 &iomuxc {
     pinctrl_uart1_gpio: uart1_gpio_grp {
         fsl,pins = <
-            0x224 0x494 5 0 0 0x1c4	/* MX8MP_IOMUXC_SAI2_RXC__GPIO4_IO22 - SODIMM 133 */
-            0x220 0x490 5 0 0 0x1c4	/* MX8MP_IOMUXC_SAI2_TXFS__GPIO4_IO21 - SODIMM 135 */
+            0x220 0x480 5 0 0 0x1c4	/* UART1_RTS -> GPIO4_IO20 - SODIMM 133 */
+            0x224 0x484 5 0 0 0x1c4	/* UART1_CTS -> GPIO4_IO21 - SODIMM 135 */
         >;
     };
 };
