@@ -3,10 +3,25 @@
 /plugin/;
 
 / {
-	compatible = "toradex,verdin-imx8mp";
+    compatible = "toradex,verdin-imx8mp";
 };
 
 /* Disable UART1 RTS/CTS flow control to use SODIMM 133 & 135 as GPIO */
 &uart1 {
-	uart-has-rtscts = <0>;
+    uart-has-rtscts = <0>;
+};
+
+/* Reconfigure SODIMM 133 (UART1_RTS) and SODIMM 135 (UART1_CTS) as GPIO */
+&iomuxc {
+    pinctrl_uart1_gpio: uart1_gpio_grp {
+        fsl,pins = <
+            0x224 0x494 5 0 0 0x1c4	/* MX8MP_IOMUXC_SAI2_RXC__GPIO4_IO22 - SODIMM 133 */
+            0x220 0x490 5 0 0 0x1c4	/* MX8MP_IOMUXC_SAI2_TXFS__GPIO4_IO21 - SODIMM 135 */
+        >;
+    };
+};
+
+&gpio4 {
+    pinctrl-names = "default";
+    pinctrl-0 = <&pinctrl_uart1_gpio>;
 };
