@@ -1,0 +1,15 @@
+#!/bin/sh
+
+set -eu
+
+# ERROR: When reparsing /workdir/torizon/layers/meta-toradex-torizon/recipes-images/images/torizon-docker.bb:do_image_ostreecommit, the basehash value changed from 4bd9677d2d4a82eeb20a327f4ef99f0ce1e3b645d5f33fdc4651f6d85852e129 to 479407021fad1bb7e3069e9a0ec327c2fccdf308c18c1481422fb59cc03bccb9. The metadata is not deterministic and this needs to be fixed.
+# ERROR: The following commands may help:
+# ERROR: $ bitbake torizon-docker -cdo_image_ostreecommit -Snone
+# ERROR: Then:
+# ERROR: $ bitbake torizon-docker -cdo_image_ostreecommit -Sprintdiff
+
+bitbake torizon-docker -cdo_image_ostreecommit -Snone
+bitbake torizon-docker -cdo_image_ostreecommit -Sprintdiff
+
+bitbake -c cleanall device-tree-overlays
+bitbake torizon-docker
