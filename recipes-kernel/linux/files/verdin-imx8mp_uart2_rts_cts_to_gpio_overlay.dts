@@ -27,12 +27,3 @@
 		>;
 	};
 };
-
-/ {
-	gpio_leds {
-		compatible = "gpio-leds";
-		pinctrl-names = "default";
-		/* Use both GPIO pinctrl groups */
-		pinctrl-0 = <&pinctrl_gpio_uart2_cts>, <&pinctrl_gpio_uart2_rts>;
-	};
-};
