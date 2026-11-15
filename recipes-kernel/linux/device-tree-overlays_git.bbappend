@@ -46,3 +46,6 @@ TEZI_EXTERNAL_KERNEL_DEVICETREE_BOOT:append:verdin-imx8mp = " \
 	verdin-imx8mp_i2c2_dsi_to_gpio_overlay.dtbo \
 	verdin-imx8mp_i2c4_csi_to_gpio_overlay.dtbo \
 "
+
+# Disable DSI/HDMI display drivers - display output not needed
+TEZI_EXTERNAL_KERNEL_DEVICETREE:remove:verdin-imx8mp = "verdin-imx8mp_dsi-to-hdmi_overlay.dtbo verdin-imx8mp_hdmi_overlay.dtbo"
