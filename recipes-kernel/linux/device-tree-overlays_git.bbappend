@@ -19,7 +19,7 @@
 # 	verdin-imx8mp_hmp_overlay.dtbo"
 FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
-SRC_URI:append:verdin-imx8mp = " file://verdin-imx8mp_spi1-gpio_overlay.dts file://verdin-imx8mp_sht40_overlay.dts file://verdin-imx8mp_uart1_rts_cts_to_gpio_overlay.dts file://verdin-imx8mp_uart2_rts_cts_to_gpio_overlay.dts file://verdin-imx8mp_i2c2_dsi_to_gpio_overlay.dts file://verdin-imx8mp_i2c4_csi_to_gpio_overlay.dts file://verdin-imx8mp_flexcan2_disable_overlay.dts file://verdin-imx8mp_mipi_dsi_disable_overlay.dts file://verdin-imx8mp_aud2htx_disable_overlay.dts"
+SRC_URI:append:verdin-imx8mp = " file://verdin-imx8mp_spi1-gpio_overlay.dts file://verdin-imx8mp_sht40_overlay.dts file://verdin-imx8mp_uart1_rts_cts_to_gpio_overlay.dts file://verdin-imx8mp_uart2_rts_cts_to_gpio_overlay.dts file://verdin-imx8mp_i2c2_dsi_to_gpio_overlay.dts file://verdin-imx8mp_i2c4_csi_to_gpio_overlay.dts file://verdin-imx8mp_flexcan2_disable_overlay.dts file://verdin-imx8mp_mipi_dsi_disable_overlay.dts file://verdin-imx8mp_aud2htx_disable_overlay.dts file://verdin-imx8mp_hdmi_sound_disable_overlay.dts"
 
 do_collect_overlays:append:verdin-imx8mp() {
 	install -m 0644 ${WORKDIR}/verdin-imx8mp_spi1-gpio_overlay.dts ${DT_FILES_PATH}/
@@ -31,9 +31,10 @@ do_collect_overlays:append:verdin-imx8mp() {
 	install -m 0644 ${WORKDIR}/verdin-imx8mp_flexcan2_disable_overlay.dts ${DT_FILES_PATH}/
 	install -m 0644 ${WORKDIR}/verdin-imx8mp_mipi_dsi_disable_overlay.dts ${DT_FILES_PATH}/
 	install -m 0644 ${WORKDIR}/verdin-imx8mp_aud2htx_disable_overlay.dts ${DT_FILES_PATH}/
+	install -m 0644 ${WORKDIR}/verdin-imx8mp_hdmi_sound_disable_overlay.dts ${DT_FILES_PATH}/
 }
 
-TEZI_EXTERNAL_KERNEL_DEVICETREE_BOOT:append:verdin-imx8mp = " verdin-imx8mp_hmp_overlay.dtbo verdin-imx8mp_spi1-gpio_overlay.dtbo verdin-imx8mp_sht40_overlay.dtbo verdin-imx8mp_uart1_rts_cts_to_gpio_overlay.dtbo verdin-imx8mp_uart2_rts_cts_to_gpio_overlay.dtbo verdin-imx8mp_i2c2_dsi_to_gpio_overlay.dtbo verdin-imx8mp_i2c4_csi_to_gpio_overlay.dtbo verdin-imx8mp_flexcan2_disable_overlay.dtbo verdin-imx8mp_mipi_dsi_disable_overlay.dtbo verdin-imx8mp_aud2htx_disable_overlay.dtbo"
+TEZI_EXTERNAL_KERNEL_DEVICETREE_BOOT:append:verdin-imx8mp = " verdin-imx8mp_hmp_overlay.dtbo verdin-imx8mp_spi1-gpio_overlay.dtbo verdin-imx8mp_sht40_overlay.dtbo verdin-imx8mp_uart1_rts_cts_to_gpio_overlay.dtbo verdin-imx8mp_uart2_rts_cts_to_gpio_overlay.dtbo verdin-imx8mp_i2c2_dsi_to_gpio_overlay.dtbo verdin-imx8mp_i2c4_csi_to_gpio_overlay.dtbo verdin-imx8mp_flexcan2_disable_overlay.dtbo verdin-imx8mp_mipi_dsi_disable_overlay.dtbo verdin-imx8mp_aud2htx_disable_overlay.dtbo verdin-imx8mp_hdmi_sound_disable_overlay.dtbo"
 
 # Disable DSI/HDMI display drivers - display output not needed
 TEZI_EXTERNAL_KERNEL_DEVICETREE:remove:verdin-imx8mp = "verdin-imx8mp_dsi-to-hdmi_overlay.dtbo verdin-imx8mp_hdmi_overlay.dtbo"
