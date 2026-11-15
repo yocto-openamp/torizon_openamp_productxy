@@ -31,3 +31,6 @@ do_collect_overlays:append:verdin-imx8mp() {
 }
 
 TEZI_EXTERNAL_KERNEL_DEVICETREE_BOOT:append:verdin-imx8mp = " verdin-imx8mp_hmp_overlay.dtbo verdin-imx8mp_spi1-gpio_overlay.dtbo verdin-imx8mp_sht40_overlay.dtbo verdin-imx8mp_uart1_rts_cts_to_gpio_overlay.dtbo verdin-imx8mp_uart2_rts_cts_to_gpio_overlay.dtbo verdin-imx8mp_i2c2_dsi_to_gpio_overlay.dtbo verdin-imx8mp_i2c4_csi_to_gpio_overlay.dtbo"
+
+# Disable DSI/HDMI display drivers - display output not needed
+TEZI_EXTERNAL_KERNEL_DEVICETREE:remove:verdin-imx8mp = "verdin-imx8mp_dsi-to-hdmi_overlay.dtbo verdin-imx8mp_hdmi_overlay.dtbo"
