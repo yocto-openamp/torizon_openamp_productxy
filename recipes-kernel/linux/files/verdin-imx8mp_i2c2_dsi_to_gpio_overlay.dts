@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "toradex,verdin-imx8mp";
+};
+
+/* Disable I2C_2_DSI to use SODIMM 53 (SDA) & SODIMM 55 (SCL) as GPIO */
+&i2c2 {
+	status = "disabled";
+};
