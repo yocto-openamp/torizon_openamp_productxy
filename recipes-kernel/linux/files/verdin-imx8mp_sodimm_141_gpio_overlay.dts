@@ -17,7 +17,7 @@
 				fsl,pins = <MX8MP_IOMUXC_SD1_DATA5__GPIO2_IO07>;
 			};
 			sodimm_143_gpio_pins {
-				fsl,pins = <MX8MP_IOMUXC_SD1_DATA6__GPIO2_IO08>;
+				fsl,pins = <MX8MP_IOMUXC_SD1_DATA4__GPIO2_IO06>;
 			};
 		};
 	};
@@ -30,7 +30,7 @@
 				line-name = "sodimm_141";
 			};
 			sodimm_143 {
-				gpios = <8 GPIO_ACTIVE_HIGH>;
+				gpios = <6 GPIO_ACTIVE_HIGH>;
 				output-low;
 				line-name = "sodimm_143";
 			};
