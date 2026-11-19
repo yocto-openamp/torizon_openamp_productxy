@@ -1,0 +1,54 @@
+// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
+/*
+ * Verdin iMX8MP: SODIMM_141 and SODIMM_143 (UART_2 RTS/CTS) as plain GPIOs.
+ *
+ *   SODIMM_141  UART_2_RTS  SD1_DATA5  GPIO2_IO07  gpiochip1 line 7  (Mallow X19-23)  input
+ *   SODIMM_143  UART_2_CTS  SD1_DATA4  GPIO2_IO06  gpiochip1 line 6  (Mallow X19-24)  output
+ *
+ * Note: as UART pins the directions are reversed (RTS = output, CTS =
+ * input). The i.MX pad names use DCE naming, so SD1_DATA5 is called
+ * UART2_DCE_CTS and SD1_DATA4 UART2_DCE_RTS - swapped against the
+ * Verdin names. As GPIOs the direction is set at runtime by user space.
+ *
+ * Both pads are muxed by UART2 by default (pinctrl_uart2_rts / _cts, ALT4).
+ * Muxing them to ALT5 needs two things:
+ *   1. UART2 must stop claiming them: its pinctrl-0 keeps only RX/TX.
+ *   2. Some device must apply the GPIO group: gpio2 gets it as its
+ *      "default" pinctrl state, which the driver core applies at probe.
+ *
+ * The lines are not hogged, so user space can use them:
+ *   gpioget gpiochip1 7       # SODIMM_141, X19-23, input
+ *   gpioset gpiochip1 6=1     # SODIMM_143, X19-24, output
+ * Line names come from gpio2's existing gpio-line-names (SODIMM_141/143).
+ *
+ * uart-has-rtscts = 0 is required, otherwise the UART driver expects RTS/CTS.
+ */
+/dts-v1/;
+/plugin/;
+
+#include "imx8mp-pinfunc.h"
+
+/ {
+    compatible = "toradex,verdin-imx8mp";
+};
+
+&iomuxc {
+	pinctrl_sodimm_141_143_gpio: sodimm141143gpiogrp {
+		fsl,pins =
+			<MX8MP_IOMUXC_SD1_DATA5__GPIO2_IO07	0x184>,	/* SODIMM_141, X19-23, input */
+			<MX8MP_IOMUXC_SD1_DATA4__GPIO2_IO06	0x184>;	/* SODIMM_143, X19-24, output */
+	};
+};
+
+/* Keep UART2 RX/TX, release RTS (SODIMM_141) and CTS (SODIMM_143). */
+/* Disable UART2 RTS/CTS flow control to use SODIMM 141 & 143 as GPIO */
+&uart2 {
+    uart-has-rtscts = <0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart2>;
+};
+
+&gpio2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_sodimm_141_143_gpio>;
+};

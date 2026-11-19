@@ -1,0 +1,62 @@
+// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
+/*
+ * Verdin iMX8MP: SODIMM_133 and SODIMM_135 (UART_1 RTS/CTS) as plain GPIOs.
+ *
+ *   SODIMM_133  UART_1_RTS  SAI2_TXFS  GPIO4_IO24  gpiochip3 line 24  (Mallow X19-19)  input
+ *   SODIMM_135  UART_1_CTS  SAI2_RXD0  GPIO4_IO23  gpiochip3 line 23  (Mallow X19-20)  output
+ *
+ * Note: as UART pins the directions are reversed (RTS = output, CTS =
+ * input). The i.MX pad names use DCE naming, so SAI2_TXFS is called
+ * UART1_DCE_CTS and SAI2_RXD0 UART1_DCE_RTS - swapped against the
+ * Verdin names. As GPIOs the direction is set at runtime by user space.
+ *
+ * Both pads are muxed by UART1 by default (pinctrl_uart1, ALT2). Unlike
+ * UART2, the base device tree puts RX/TX/RTS/CTS into one single group,
+ * so this overlay defines a new RX/TX-only group for UART1.
+ * Muxing the pads to ALT5 needs two things:
+ *   1. UART1 must stop claiming them: its pinctrl-0 keeps only RX/TX.
+ *   2. Some device must apply the GPIO group: gpio4 gets it as its
+ *      "default" pinctrl state, which the driver core applies at probe.
+ *
+ * The lines are not hogged, so user space can use them:
+ *   gpioget gpiochip3 24      # SODIMM_133, X19-19, input
+ *   gpioset gpiochip3 23=1    # SODIMM_135, X19-20, output
+ * Line names come from gpio4's existing gpio-line-names (SODIMM_133/135).
+ *
+ * uart-has-rtscts = 0 is required, otherwise the UART driver expects RTS/CTS.
+ */
+/dts-v1/;
+/plugin/;
+
+#include "imx8mp-pinfunc.h"
+
+/ {
+    compatible = "toradex,verdin-imx8mp";
+};
+
+&iomuxc {
+	pinctrl_uart1_rxtx: uart1rxtxgrp {
+		fsl,pins =
+			<MX8MP_IOMUXC_UART1_RXD__UART1_DCE_RX	0x1c4>,	/* SODIMM_129 */
+			<MX8MP_IOMUXC_UART1_TXD__UART1_DCE_TX	0x1c4>;	/* SODIMM_131 */
+	};
+
+	pinctrl_sodimm_133_135_gpio: sodimm133135gpiogrp {
+		fsl,pins =
+			<MX8MP_IOMUXC_SAI2_TXFS__GPIO4_IO24	0x184>,	/* SODIMM_133, X19-19, input */
+			<MX8MP_IOMUXC_SAI2_RXD0__GPIO4_IO23	0x184>;	/* SODIMM_135, X19-20, output */
+	};
+};
+
+/* Keep UART1 RX/TX, release RTS (SODIMM_133) and CTS (SODIMM_135). */
+/* Disable UART1 RTS/CTS flow control to use SODIMM 133 & 135 as GPIO */
+&uart1 {
+    uart-has-rtscts = <0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart1_rxtx>;
+};
+
+&gpio4 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_sodimm_133_135_gpio>;
+};
