@@ -1,39 +1,49 @@
 // SPDX-License-Identifier: GPL-2.0-or-later OR MIT
+/*
+ * Verdin iMX8MP: SODIMM_141 and SODIMM_143 (UART_2 RTS/CTS) as plain GPIOs.
+ *
+ *   SODIMM_141  SD1_DATA5  GPIO2_IO07  gpiochip1 line 7   (Mallow X19-23)
+ *   SODIMM_143  SD1_DATA4  GPIO2_IO06  gpiochip1 line 6   (Mallow X19-24)
+ *
+ * Both pads are muxed by UART2 by default (pinctrl_uart2_rts / _cts, ALT4).
+ * Muxing them to ALT5 needs two things:
+ *   1. UART2 must stop claiming them: its pinctrl-0 keeps only RX/TX.
+ *   2. Some device must apply the GPIO group: gpio2 gets it as its
+ *      "default" pinctrl state, which the driver core applies at probe.
+ *
+ * The lines are not hogged, so user space can drive them:
+ *   gpioset gpiochip1 7=1     # SODIMM_141
+ *   gpioset gpiochip1 6=1     # SODIMM_143
+ * Line names come from gpio2's existing gpio-line-names (SODIMM_141/143).
+ *
+ * Use together with verdin-imx8mp_uart2_rts_cts_to_gpio_overlay.dtbo
+ * (uart-has-rtscts = 0), otherwise the UART driver expects RTS/CTS.
+ */
+
 /dts-v1/;
 /plugin/;
 
-#include <dt-bindings/gpio/gpio.h>
 #include "imx8mp-pinfunc.h"
 
 / {
 	compatible = "toradex,verdin-imx8mp";
 };
 
-/ {
-	fragment@0 {
-		target = <&iomuxc>;
-		__overlay__ {
-			sodimm_141_gpio_pins {
-				fsl,pins = <MX8MP_IOMUXC_SD1_DATA5__GPIO2_IO07>;
-			};
-			sodimm_143_gpio_pins {
-				fsl,pins = <MX8MP_IOMUXC_SD1_DATA4__GPIO2_IO06>;
-			};
-		};
+&iomuxc {
+	pinctrl_sodimm_141_143_gpio: sodimm141143gpiogrp {
+		fsl,pins =
+			<MX8MP_IOMUXC_SD1_DATA5__GPIO2_IO07	0x184>,	/* SODIMM_141 */
+			<MX8MP_IOMUXC_SD1_DATA4__GPIO2_IO06	0x184>;	/* SODIMM_143 */
 	};
+};
 
-	fragment@1 {
-		target = <&gpio2>;
-		__overlay__ {
-			status = "okay";
-			sodimm_141 {
-				line-name = "sodimm_141";
-			};
-			sodimm_143 {
-				gpios = <6 GPIO_ACTIVE_HIGH>;
-				output-low;
-				line-name = "sodimm_143";
-			};
-		};
-	};
+/* Keep UART2 RX/TX, release RTS (SODIMM_143) and CTS (SODIMM_141). */
+&uart2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_uart2>;
+};
+
+&gpio2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_sodimm_141_143_gpio>;
 };
