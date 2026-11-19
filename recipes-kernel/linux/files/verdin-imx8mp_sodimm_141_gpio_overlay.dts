@@ -3,25 +3,32 @@
 /plugin/;
 
 #include <dt-bindings/gpio/gpio.h>
-#include <dt-bindings/pinctrl/pins-imx8mp.h>
+#include "imx8mp-pinfunc.h"
 
 / {
 	compatible = "toradex,verdin-imx8mp";
 };
 
-/* Use SODIMM 141 as GPIO */
-&iomuxc {
-	sodimm_141_gpio_pins {
-		fsl,pins = <IMX8MP_IOMUXC_SD1_DATA5__GPIO2_IO7 0x48d>;
+/ {
+	fragment@0 {
+		target = <&iomuxc>;
+		__overlay__ {
+			sodimm_141_gpio_pins {
+				fsl,pins = <MX8MP_IOMUXC_SD1_DATA5__GPIO2_IO07>;
+			};
+		};
 	};
-};
 
-&gpio2 {
-	status = "okay";
-	sodimm_141 {
-		gpio-hog;
-		gpios = <7 GPIO_ACTIVE_HIGH>;
-		output-low;
-		line-name = "sodimm_141";
+	fragment@1 {
+		target = <&gpio2>;
+		__overlay__ {
+			status = "okay";
+			sodimm_141 {
+				gpio-hog;
+				gpios = <7 GPIO_ACTIVE_HIGH>;
+				output-low;
+				line-name = "sodimm_141";
+			};
+		};
 	};
 };
