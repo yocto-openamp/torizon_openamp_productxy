@@ -26,6 +26,7 @@ SRC_URI:append:verdin-imx8mp = " \
 	file://verdin-imx8mp_uart2_rts_cts_to_gpio_overlay.dts \
 	file://verdin-imx8mp_i2c2_dsi_to_gpio_overlay.dts \
 	file://verdin-imx8mp_i2c4_csi_to_gpio_overlay.dts \
+	file://verdin-imx8mp_can_to_gpio_overlay.dts \
 	file://verdin-imx8mp_mipi_dsi_disable_overlay.dts \
 	file://verdin-imx8mp_aud2htx_disable_overlay.dts \
 	file://verdin-imx8mp_hdmi_sound_disable_overlay.dts \
@@ -38,6 +39,7 @@ do_collect_overlays:append:verdin-imx8mp() {
 	install -m 0644 ${WORKDIR}/verdin-imx8mp_uart2_rts_cts_to_gpio_overlay.dts ${DT_FILES_PATH}/
 	install -m 0644 ${WORKDIR}/verdin-imx8mp_i2c2_dsi_to_gpio_overlay.dts ${DT_FILES_PATH}/
 	install -m 0644 ${WORKDIR}/verdin-imx8mp_i2c4_csi_to_gpio_overlay.dts ${DT_FILES_PATH}/
+	install -m 0644 ${WORKDIR}/verdin-imx8mp_can_to_gpio_overlay.dts ${DT_FILES_PATH}/
 	install -m 0644 ${WORKDIR}/verdin-imx8mp_mipi_dsi_disable_overlay.dts ${DT_FILES_PATH}/
 	install -m 0644 ${WORKDIR}/verdin-imx8mp_aud2htx_disable_overlay.dts ${DT_FILES_PATH}/
 	install -m 0644 ${WORKDIR}/verdin-imx8mp_hdmi_sound_disable_overlay.dts ${DT_FILES_PATH}/
@@ -51,6 +53,7 @@ TEZI_EXTERNAL_KERNEL_DEVICETREE_BOOT:append:verdin-imx8mp = " \
 	verdin-imx8mp_uart2_rts_cts_to_gpio_overlay.dtbo \
 	verdin-imx8mp_i2c2_dsi_to_gpio_overlay.dtbo \
 	verdin-imx8mp_i2c4_csi_to_gpio_overlay.dtbo \
+	verdin-imx8mp_can_to_gpio_overlay.dtbo \
 	verdin-imx8mp_mipi_dsi_disable_overlay.dtbo \
 	verdin-imx8mp_aud2htx_disable_overlay.dtbo \
 	verdin-imx8mp_hdmi_sound_disable_overlay.dtbo \

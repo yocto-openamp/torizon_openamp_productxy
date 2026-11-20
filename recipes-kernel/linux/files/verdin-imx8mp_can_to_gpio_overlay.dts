@@ -1,0 +1,60 @@
+// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
+/*
+ * Verdin iMX8MP on Mallow: disable CAN_1 and CAN_2 and free their four
+ * pins on the primary extension header (X19, Table 21) as plain GPIOs.
+ *
+ *   SODIMM_20  CAN_1_TX  SPDIF_TX   GPIO5_IO03  gpiochip4 line 3   (Mallow X19-6)
+ *   SODIMM_22  CAN_1_RX  SPDIF_RX   GPIO5_IO04  gpiochip4 line 4   (Mallow X19-7)
+ *   SODIMM_24  CAN_2_TX  SAI2_TXD0  GPIO4_IO26  gpiochip3 line 26  (Mallow X19-8)
+ *   SODIMM_26  CAN_2_RX  SAI2_MCLK  GPIO4_IO27  gpiochip3 line 27  (Mallow X19-9)
+ *
+ * The Mallow device tree enables flexcan1/flexcan2, whose pinctrl groups
+ * (pinctrl_flexcan1/pinctrl_flexcan2 in imx8mp-verdin.dtsi) claim these
+ * pads. Freeing the pads needs two things:
+ *   1. flexcan1/flexcan2 are disabled, so they no longer claim the pads.
+ *   2. Some device must apply the GPIO group: gpio5 gets it as its
+ *      "default" pinctrl state, which the driver core applies at probe.
+ *      (gpio4 is not used here because the uart1_rts_cts_to_gpio overlay
+ *      already sets pinctrl-0 on gpio4; a second overlay touching the
+ *      same property would overwrite it.)
+ *
+ * The lines are not hogged, so user space can use them:
+ *   gpioget gpiochip4 3       # SODIMM_20, X19-6
+ *   gpioget gpiochip4 4       # SODIMM_22, X19-7
+ *   gpioget gpiochip3 26      # SODIMM_24, X19-8
+ *   gpioget gpiochip3 27      # SODIMM_26, X19-9
+ * Line names come from the existing gpio-line-names (SODIMM_20/22/24/26).
+ */
+/dts-v1/;
+/plugin/;
+
+#include "imx8mp-pinfunc.h"
+
+/ {
+    compatible = "toradex,verdin-imx8mp";
+};
+
+&iomuxc {
+	pinctrl_can_pins_gpio: canpinsgpiogrp {
+		fsl,pins =
+			<MX8MP_IOMUXC_SPDIF_TX__GPIO5_IO03	0x184>,	/* SODIMM_20, X19-6 */
+			<MX8MP_IOMUXC_SPDIF_RX__GPIO5_IO04	0x184>,	/* SODIMM_22, X19-7 */
+			<MX8MP_IOMUXC_SAI2_TXD0__GPIO4_IO26	0x184>,	/* SODIMM_24, X19-8 */
+			<MX8MP_IOMUXC_SAI2_MCLK__GPIO4_IO27	0x184>;	/* SODIMM_26, X19-9 */
+	};
+};
+
+/* Disable CAN_1, releasing SODIMM_20 and SODIMM_22 */
+&flexcan1 {
+	status = "disabled";
+};
+
+/* Disable CAN_2, releasing SODIMM_24 and SODIMM_26 */
+&flexcan2 {
+	status = "disabled";
+};
+
+&gpio5 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_can_pins_gpio>;
+};
