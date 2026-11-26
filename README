@@ -100,3 +100,24 @@ available at:
 Temperature is in millidegrees Celsius; humidity is in milli-percent RH.
 The driver caches measurements for at least two seconds. Do not rely on
 fixed hwmon indices or access the sensors with raw I2C commands while bound.
+
+ICM-45686 SPI driver
+====================
+
+The Verdin iMX8MP linux-toradex kernel backports the upstream Linux v6.19
+ICM-45600 IIO driver, including ICM-45686 support. icm45600.cfg enables
+the SPI transport as a module; the I2C and I3C transports remain disabled.
+torizon-docker includes kernel-module-inv-icm45600-spi and its dependencies.
+
+No sensor is instantiated by this layer. A board-specific device-tree
+overlay must describe the SPI controller and chip select, compatible
+"invensense,icm45686", vdd and vddio supplies, and an interrupt named
+"int1". Follow the upstream invensense,icm45600.yaml binding and the
+sensor's electrical requirements. The existing overlay disables ecspi1 for
+Linux and reserves it for the M7; do not attach the Linux driver there
+without changing that ownership arrangement.
+
+Rebuild and deploy torizon-docker, then verify the module with
+"modinfo inv-icm45600-spi". After wiring the sensor and applying its
+board-specific overlay, check dmesg and /sys/bus/iio/devices/ for the
+accelerometer and gyroscope devices.

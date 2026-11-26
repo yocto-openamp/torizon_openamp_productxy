@@ -1,0 +1,814 @@
+Subject: [PATCH] iio: adapt ICM-45600 to Linux 6.6 interfaces
+
+Use the 6.6 direct-mode and buffer APIs and symbol namespace syntax.
+Keep a private copy of the v6.19 InvenSense timestamp helper because the
+6.6 shared helper has a different API and algorithm; changing the shared
+helper would affect existing IIO drivers.
+
+Upstream-Status: Inappropriate [6.6-specific backport]
+
+diff --git a/drivers/iio/imu/inv_icm45600/Kconfig b/drivers/iio/imu/inv_icm45600/Kconfig
+index dc13340..a93d70f 100644
+--- a/drivers/iio/imu/inv_icm45600/Kconfig
++++ b/drivers/iio/imu/inv_icm45600/Kconfig
+@@ -4,7 +4,6 @@ config INV_ICM45600
+ 	tristate
+ 	select IIO_BUFFER
+ 	select IIO_KFIFO_BUF
+-	select IIO_INV_SENSORS_TIMESTAMP
+ 
+ config INV_ICM45600_I2C
+ 	tristate "InvenSense ICM-456xx I2C driver"
+diff --git a/drivers/iio/imu/inv_icm45600/Makefile b/drivers/iio/imu/inv_icm45600/Makefile
+index c98b836..416ac1d 100644
+--- a/drivers/iio/imu/inv_icm45600/Makefile
++++ b/drivers/iio/imu/inv_icm45600/Makefile
+@@ -5,6 +5,7 @@ inv-icm45600-y += inv_icm45600_core.o
+ inv-icm45600-y += inv_icm45600_buffer.o
+ inv-icm45600-y += inv_icm45600_gyro.o
+ inv-icm45600-y += inv_icm45600_accel.o
++inv-icm45600-y += inv_icm45600_timestamp.o
+ 
+ obj-$(CONFIG_INV_ICM45600_I2C) += inv-icm45600-i2c.o
+ inv-icm45600-i2c-y += inv_icm45600_i2c.o
+diff --git a/drivers/iio/imu/inv_icm45600/inv_icm45600.h b/drivers/iio/imu/inv_icm45600/inv_icm45600.h
+index c5b5446..802b86d 100644
+--- a/drivers/iio/imu/inv_icm45600/inv_icm45600.h
++++ b/drivers/iio/imu/inv_icm45600/inv_icm45600.h
+@@ -12,7 +12,7 @@
+ #include <linux/sizes.h>
+ #include <linux/types.h>
+ 
+-#include <linux/iio/common/inv_sensors_timestamp.h>
++#include "inv_icm45600_timestamp.h"
+ #include <linux/iio/iio.h>
+ 
+ #include "inv_icm45600_buffer.h"
+@@ -181,7 +181,7 @@ struct inv_icm45600_sensor_state {
+ 	const int *scales;
+ 	size_t scales_len;
+ 	enum inv_icm45600_sensor_mode power_mode;
+-	struct inv_sensors_timestamp ts;
++	struct inv_icm45600_timestamp ts;
+ };
+ 
+ /* Virtual register addresses: @bank on MSB (16 bits), @address on LSB */
+diff --git a/drivers/iio/imu/inv_icm45600/inv_icm45600_accel.c b/drivers/iio/imu/inv_icm45600/inv_icm45600_accel.c
+index efa22e0..5472b00 100644
+--- a/drivers/iio/imu/inv_icm45600/inv_icm45600_accel.c
++++ b/drivers/iio/imu/inv_icm45600/inv_icm45600_accel.c
+@@ -13,7 +13,7 @@
+ #include <linux/types.h>
+ 
+ #include <linux/iio/buffer.h>
+-#include <linux/iio/common/inv_sensors_timestamp.h>
++#include "inv_icm45600_timestamp.h"
+ #include <linux/iio/iio.h>
+ #include <linux/iio/kfifo_buf.h>
+ 
+@@ -328,12 +328,12 @@ static int _inv_icm45600_accel_write_odr(struct iio_dev *indio_dev, int odr)
+ {
+ 	struct inv_icm45600_state *st = iio_device_get_drvdata(indio_dev);
+ 	struct inv_icm45600_sensor_state *accel_st = iio_priv(indio_dev);
+-	struct inv_sensors_timestamp *ts = &accel_st->ts;
++	struct inv_icm45600_timestamp *ts = &accel_st->ts;
+ 	struct inv_icm45600_sensor_conf conf = INV_ICM45600_SENSOR_CONF_KEEP_VALUES;
+ 	int ret;
+ 
+ 	conf.odr = odr;
+-	ret = inv_sensors_timestamp_update_odr(ts, inv_icm45600_odr_to_period(conf.odr),
++	ret = inv_icm45600_timestamp_update_odr(ts, inv_icm45600_odr_to_period(conf.odr),
+ 						iio_buffer_enabled(indio_dev));
+ 	if (ret)
+ 		return ret;
+@@ -545,10 +545,10 @@ static int inv_icm45600_accel_read_raw(struct iio_dev *indio_dev,
+ 
+ 	switch (mask) {
+ 	case IIO_CHAN_INFO_RAW:
+-		if (!iio_device_claim_direct(indio_dev))
++		if (iio_device_claim_direct_mode(indio_dev))
+ 			return -EBUSY;
+ 		ret = inv_icm45600_accel_read_sensor(indio_dev, chan, val);
+-		iio_device_release_direct(indio_dev);
++		iio_device_release_direct_mode(indio_dev);
+ 		if (ret)
+ 			return ret;
+ 		return IIO_VAL_INT;
+@@ -605,18 +605,18 @@ static int inv_icm45600_accel_write_raw(struct iio_dev *indio_dev,
+ 
+ 	switch (mask) {
+ 	case IIO_CHAN_INFO_SCALE:
+-		if (!iio_device_claim_direct(indio_dev))
++		if (iio_device_claim_direct_mode(indio_dev))
+ 			return -EBUSY;
+ 		ret = inv_icm45600_accel_write_scale(indio_dev, val, val2);
+-		iio_device_release_direct(indio_dev);
++		iio_device_release_direct_mode(indio_dev);
+ 		return ret;
+ 	case IIO_CHAN_INFO_SAMP_FREQ:
+ 		return inv_icm45600_accel_write_odr(indio_dev, val, val2);
+ 	case IIO_CHAN_INFO_CALIBBIAS:
+-		if (!iio_device_claim_direct(indio_dev))
++		if (iio_device_claim_direct_mode(indio_dev))
+ 			return -EBUSY;
+ 		ret = inv_icm45600_accel_write_offset(st, chan, val, val2);
+-		iio_device_release_direct(indio_dev);
++		iio_device_release_direct_mode(indio_dev);
+ 		return ret;
+ 	default:
+ 		return -EINVAL;
+@@ -686,7 +686,7 @@ struct iio_dev *inv_icm45600_accel_init(struct inv_icm45600_state *st)
+ {
+ 	struct device *dev = regmap_get_device(st->map);
+ 	struct inv_icm45600_sensor_state *accel_st;
+-	struct inv_sensors_timestamp_chip ts_chip;
++	struct inv_icm45600_timestamp_chip ts_chip;
+ 	struct iio_dev *indio_dev;
+ 	const char *name;
+ 	int ret;
+@@ -717,7 +717,7 @@ struct iio_dev *inv_icm45600_accel_init(struct inv_icm45600_state *st)
+ 	ts_chip.clock_period = 31250;
+ 	ts_chip.jitter = 20;
+ 	ts_chip.init_period = inv_icm45600_odr_to_period(st->conf.accel.odr);
+-	inv_sensors_timestamp_init(&accel_st->ts, &ts_chip);
++	inv_icm45600_timestamp_init(&accel_st->ts, &ts_chip);
+ 
+ 	iio_device_set_drvdata(indio_dev, st);
+ 	indio_dev->name = name;
+@@ -743,7 +743,7 @@ int inv_icm45600_accel_parse_fifo(struct iio_dev *indio_dev)
+ {
+ 	struct inv_icm45600_state *st = iio_device_get_drvdata(indio_dev);
+ 	struct inv_icm45600_sensor_state *accel_st = iio_priv(indio_dev);
+-	struct inv_sensors_timestamp *ts = &accel_st->ts;
++	struct inv_icm45600_timestamp *ts = &accel_st->ts;
+ 	ssize_t i, size;
+ 	unsigned int no;
+ 
+@@ -768,14 +768,18 @@ int inv_icm45600_accel_parse_fifo(struct iio_dev *indio_dev)
+ 
+ 		/* update odr */
+ 		if (odr & INV_ICM45600_SENSOR_ACCEL)
+-			inv_sensors_timestamp_apply_odr(ts, st->fifo.period,
++			inv_icm45600_timestamp_apply_odr(ts, st->fifo.period,
+ 							 st->fifo.nb.total, no);
+ 
+ 		memcpy(&buffer.accel, accel, sizeof(buffer.accel));
+ 		/* convert 8 bits FIFO temperature in high resolution format */
+ 		buffer.temp = temp ? (*temp * 64) : 0;
+-		ts_val = inv_sensors_timestamp_pop(ts);
+-		iio_push_to_buffers_with_ts(indio_dev, &buffer, sizeof(buffer), ts_val);
++		ts_val = inv_icm45600_timestamp_pop(ts);
++		if (unlikely(sizeof(buffer) < indio_dev->scan_bytes)) {
++			dev_err(&indio_dev->dev, "Undersized storage pushed to buffer\n");
++			return -ENOSPC;
++		}
++		iio_push_to_buffers_with_timestamp(indio_dev, &buffer, ts_val);
+ 	}
+ 
+ 	return 0;
+diff --git a/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c b/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c
+index 2b9ea31..9945652 100644
+--- a/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c
++++ b/drivers/iio/imu/inv_icm45600/inv_icm45600_buffer.c
+@@ -15,7 +15,7 @@
+ #include <asm/byteorder.h>
+ 
+ #include <linux/iio/buffer.h>
+-#include <linux/iio/common/inv_sensors_timestamp.h>
++#include "inv_icm45600_timestamp.h"
+ #include <linux/iio/iio.h>
+ 
+ #include "inv_icm45600_buffer.h"
+@@ -125,9 +125,9 @@ int inv_icm45600_buffer_set_fifo_en(struct inv_icm45600_state *st,
+ 	mask = INV_ICM45600_FIFO_CONFIG3_GYRO_EN |
+ 	       INV_ICM45600_FIFO_CONFIG3_ACCEL_EN;
+ 
+-	ret = regmap_assign_bits(st->map, INV_ICM45600_REG_FIFO_CONFIG3, mask,
+-				 (fifo_en & INV_ICM45600_SENSOR_GYRO) ||
+-				 (fifo_en & INV_ICM45600_SENSOR_ACCEL));
++	ret = regmap_update_bits(st->map, INV_ICM45600_REG_FIFO_CONFIG3, mask,
++				 (fifo_en & (INV_ICM45600_SENSOR_GYRO |
++					     INV_ICM45600_SENSOR_ACCEL)) ? mask : 0);
+ 	if (ret)
+ 		return ret;
+ 
+@@ -227,7 +227,7 @@ static int inv_icm45600_buffer_preenable(struct iio_dev *indio_dev)
+ 	struct inv_icm45600_state *st = iio_device_get_drvdata(indio_dev);
+ 	struct device *dev = regmap_get_device(st->map);
+ 	struct inv_icm45600_sensor_state *sensor_st = iio_priv(indio_dev);
+-	struct inv_sensors_timestamp *ts = &sensor_st->ts;
++	struct inv_icm45600_timestamp *ts = &sensor_st->ts;
+ 	int ret;
+ 
+ 	ret = pm_runtime_resume_and_get(dev);
+@@ -235,7 +235,7 @@ static int inv_icm45600_buffer_preenable(struct iio_dev *indio_dev)
+ 		return ret;
+ 
+ 	guard(mutex)(&st->lock);
+-	inv_sensors_timestamp_reset(ts);
++	inv_icm45600_timestamp_reset(ts);
+ 
+ 	return 0;
+ }
+@@ -456,7 +456,7 @@ int inv_icm45600_buffer_fifo_parse(struct inv_icm45600_state *st)
+ {
+ 	struct inv_icm45600_sensor_state *gyro_st = iio_priv(st->indio_gyro);
+ 	struct inv_icm45600_sensor_state *accel_st = iio_priv(st->indio_accel);
+-	struct inv_sensors_timestamp *ts;
++	struct inv_icm45600_timestamp *ts;
+ 	int ret;
+ 
+ 	if (st->fifo.nb.total == 0)
+@@ -465,7 +465,7 @@ int inv_icm45600_buffer_fifo_parse(struct inv_icm45600_state *st)
+ 	/* Handle gyroscope timestamp and FIFO data parsing. */
+ 	if (st->fifo.nb.gyro > 0) {
+ 		ts = &gyro_st->ts;
+-		inv_sensors_timestamp_interrupt(ts, st->fifo.watermark.eff_gyro,
++		inv_icm45600_timestamp_interrupt(ts, st->fifo.watermark.eff_gyro,
+ 						st->timestamp.gyro);
+ 		ret = inv_icm45600_gyro_parse_fifo(st->indio_gyro);
+ 		if (ret)
+@@ -475,7 +475,7 @@ int inv_icm45600_buffer_fifo_parse(struct inv_icm45600_state *st)
+ 	/* Handle accelerometer timestamp and FIFO data parsing. */
+ 	if (st->fifo.nb.accel > 0) {
+ 		ts = &accel_st->ts;
+-		inv_sensors_timestamp_interrupt(ts, st->fifo.watermark.eff_accel,
++		inv_icm45600_timestamp_interrupt(ts, st->fifo.watermark.eff_accel,
+ 						st->timestamp.accel);
+ 		ret = inv_icm45600_accel_parse_fifo(st->indio_accel);
+ 		if (ret)
+@@ -490,7 +490,7 @@ int inv_icm45600_buffer_hwfifo_flush(struct inv_icm45600_state *st,
+ {
+ 	struct inv_icm45600_sensor_state *gyro_st = iio_priv(st->indio_gyro);
+ 	struct inv_icm45600_sensor_state *accel_st = iio_priv(st->indio_accel);
+-	struct inv_sensors_timestamp *ts;
++	struct inv_icm45600_timestamp *ts;
+ 	s64 gyro_ts, accel_ts;
+ 	int ret;
+ 
+@@ -506,7 +506,7 @@ int inv_icm45600_buffer_hwfifo_flush(struct inv_icm45600_state *st,
+ 
+ 	if (st->fifo.nb.gyro > 0) {
+ 		ts = &gyro_st->ts;
+-		inv_sensors_timestamp_interrupt(ts, st->fifo.nb.gyro, gyro_ts);
++		inv_icm45600_timestamp_interrupt(ts, st->fifo.nb.gyro, gyro_ts);
+ 		ret = inv_icm45600_gyro_parse_fifo(st->indio_gyro);
+ 		if (ret)
+ 			return ret;
+@@ -514,7 +514,7 @@ int inv_icm45600_buffer_hwfifo_flush(struct inv_icm45600_state *st,
+ 
+ 	if (st->fifo.nb.accel > 0) {
+ 		ts = &accel_st->ts;
+-		inv_sensors_timestamp_interrupt(ts, st->fifo.nb.accel, accel_ts);
++		inv_icm45600_timestamp_interrupt(ts, st->fifo.nb.accel, accel_ts);
+ 		ret = inv_icm45600_accel_parse_fifo(st->indio_accel);
+ 		if (ret)
+ 			return ret;
+diff --git a/drivers/iio/imu/inv_icm45600/inv_icm45600_core.c b/drivers/iio/imu/inv_icm45600/inv_icm45600_core.c
+index 25bd975..25ddc6e 100644
+--- a/drivers/iio/imu/inv_icm45600/inv_icm45600_core.c
++++ b/drivers/iio/imu/inv_icm45600/inv_icm45600_core.c
+@@ -176,7 +176,7 @@ const struct inv_icm45600_chip_info inv_icm45605_chip_info = {
+ 	.gyro_scales = (const int *)inv_icm45600_gyro_scale,
+ 	.gyro_scales_len = INV_ICM45600_GYRO_FS_MAX,
+ };
+-EXPORT_SYMBOL_NS_GPL(inv_icm45605_chip_info, "IIO_ICM45600");
++EXPORT_SYMBOL_NS_GPL(inv_icm45605_chip_info, IIO_ICM45600);
+ 
+ const struct inv_icm45600_chip_info inv_icm45606_chip_info = {
+ 	.whoami = INV_ICM45600_WHOAMI_ICM45606,
+@@ -187,7 +187,7 @@ const struct inv_icm45600_chip_info inv_icm45606_chip_info = {
+ 	.gyro_scales = (const int *)inv_icm45600_gyro_scale,
+ 	.gyro_scales_len = INV_ICM45600_GYRO_FS_MAX,
+ };
+-EXPORT_SYMBOL_NS_GPL(inv_icm45606_chip_info, "IIO_ICM45600");
++EXPORT_SYMBOL_NS_GPL(inv_icm45606_chip_info, IIO_ICM45600);
+ 
+ const struct inv_icm45600_chip_info inv_icm45608_chip_info = {
+ 	.whoami = INV_ICM45600_WHOAMI_ICM45608,
+@@ -198,7 +198,7 @@ const struct inv_icm45600_chip_info inv_icm45608_chip_info = {
+ 	.gyro_scales = (const int *)inv_icm45600_gyro_scale,
+ 	.gyro_scales_len = INV_ICM45600_GYRO_FS_MAX,
+ };
+-EXPORT_SYMBOL_NS_GPL(inv_icm45608_chip_info, "IIO_ICM45600");
++EXPORT_SYMBOL_NS_GPL(inv_icm45608_chip_info, IIO_ICM45600);
+ 
+ const struct inv_icm45600_chip_info inv_icm45634_chip_info = {
+ 	.whoami = INV_ICM45600_WHOAMI_ICM45634,
+@@ -209,7 +209,7 @@ const struct inv_icm45600_chip_info inv_icm45634_chip_info = {
+ 	.gyro_scales = (const int *)inv_icm45600_gyro_scale,
+ 	.gyro_scales_len = INV_ICM45600_GYRO_FS_MAX,
+ };
+-EXPORT_SYMBOL_NS_GPL(inv_icm45634_chip_info, "IIO_ICM45600");
++EXPORT_SYMBOL_NS_GPL(inv_icm45634_chip_info, IIO_ICM45600);
+ 
+ const struct inv_icm45600_chip_info inv_icm45686_chip_info = {
+ 	.whoami = INV_ICM45600_WHOAMI_ICM45686,
+@@ -220,7 +220,7 @@ const struct inv_icm45600_chip_info inv_icm45686_chip_info = {
+ 	.gyro_scales = (const int *)inv_icm45686_gyro_scale,
+ 	.gyro_scales_len = INV_ICM45686_GYRO_FS_MAX,
+ };
+-EXPORT_SYMBOL_NS_GPL(inv_icm45686_chip_info, "IIO_ICM45600");
++EXPORT_SYMBOL_NS_GPL(inv_icm45686_chip_info, IIO_ICM45600);
+ 
+ const struct inv_icm45600_chip_info inv_icm45687_chip_info = {
+ 	.whoami = INV_ICM45600_WHOAMI_ICM45687,
+@@ -231,7 +231,7 @@ const struct inv_icm45600_chip_info inv_icm45687_chip_info = {
+ 	.gyro_scales = (const int *)inv_icm45686_gyro_scale,
+ 	.gyro_scales_len = INV_ICM45686_GYRO_FS_MAX,
+ };
+-EXPORT_SYMBOL_NS_GPL(inv_icm45687_chip_info, "IIO_ICM45600");
++EXPORT_SYMBOL_NS_GPL(inv_icm45687_chip_info, IIO_ICM45600);
+ 
+ const struct inv_icm45600_chip_info inv_icm45688p_chip_info = {
+ 	.whoami = INV_ICM45600_WHOAMI_ICM45688P,
+@@ -242,7 +242,7 @@ const struct inv_icm45600_chip_info inv_icm45688p_chip_info = {
+ 	.gyro_scales = (const int *)inv_icm45686_gyro_scale,
+ 	.gyro_scales_len = INV_ICM45686_GYRO_FS_MAX,
+ };
+-EXPORT_SYMBOL_NS_GPL(inv_icm45688p_chip_info, "IIO_ICM45600");
++EXPORT_SYMBOL_NS_GPL(inv_icm45688p_chip_info, IIO_ICM45600);
+ 
+ const struct inv_icm45600_chip_info inv_icm45689_chip_info = {
+ 	.whoami = INV_ICM45600_WHOAMI_ICM45689,
+@@ -253,7 +253,7 @@ const struct inv_icm45600_chip_info inv_icm45689_chip_info = {
+ 	.gyro_scales = (const int *)inv_icm45686_gyro_scale,
+ 	.gyro_scales_len = INV_ICM45686_GYRO_FS_MAX,
+ };
+-EXPORT_SYMBOL_NS_GPL(inv_icm45689_chip_info, "IIO_ICM45600");
++EXPORT_SYMBOL_NS_GPL(inv_icm45689_chip_info, IIO_ICM45600);
+ 
+ const struct iio_mount_matrix *
+ inv_icm45600_get_mount_matrix(const struct iio_dev *indio_dev,
+@@ -787,7 +787,7 @@ int inv_icm45600_core_probe(struct regmap *regmap, const struct inv_icm45600_chi
+ 
+ 	return 0;
+ }
+-EXPORT_SYMBOL_NS_GPL(inv_icm45600_core_probe, "IIO_ICM45600");
++EXPORT_SYMBOL_NS_GPL(inv_icm45600_core_probe, IIO_ICM45600);
+ 
+ /*
+  * Suspend saves sensors state and turns everything off.
+@@ -849,8 +849,8 @@ static int inv_icm45600_resume(struct device *dev)
+ 			struct inv_icm45600_sensor_state *accel_st = iio_priv(st->indio_accel);
+ 			unsigned int val;
+ 
+-			inv_sensors_timestamp_reset(&gyro_st->ts);
+-			inv_sensors_timestamp_reset(&accel_st->ts);
++			inv_icm45600_timestamp_reset(&gyro_st->ts);
++			inv_icm45600_timestamp_reset(&accel_st->ts);
+ 			val = FIELD_PREP(INV_ICM45600_FIFO_CONFIG0_MODE_MASK,
+ 					 INV_ICM45600_FIFO_CONFIG0_MODE_STREAM);
+ 			ret = regmap_update_bits(st->map, INV_ICM45600_REG_FIFO_CONFIG0,
+@@ -986,4 +986,3 @@ EXPORT_NS_GPL_DEV_PM_OPS(inv_icm45600_pm_ops, IIO_ICM45600) = {
+ MODULE_AUTHOR("InvenSense, Inc.");
+ MODULE_DESCRIPTION("InvenSense ICM-456xx device driver");
+ MODULE_LICENSE("GPL");
+-MODULE_IMPORT_NS("IIO_INV_SENSORS_TIMESTAMP");
+diff --git a/drivers/iio/imu/inv_icm45600/inv_icm45600_gyro.c b/drivers/iio/imu/inv_icm45600/inv_icm45600_gyro.c
+index 1e85fd0..bad9076 100644
+--- a/drivers/iio/imu/inv_icm45600/inv_icm45600_gyro.c
++++ b/drivers/iio/imu/inv_icm45600/inv_icm45600_gyro.c
+@@ -13,7 +13,7 @@
+ #include <linux/types.h>
+ 
+ #include <linux/iio/buffer.h>
+-#include <linux/iio/common/inv_sensors_timestamp.h>
++#include "inv_icm45600_timestamp.h"
+ #include <linux/iio/iio.h>
+ #include <linux/iio/kfifo_buf.h>
+ 
+@@ -341,12 +341,12 @@ static int _inv_icm45600_gyro_write_odr(struct iio_dev *indio_dev, int odr)
+ {
+ 	struct inv_icm45600_state *st = iio_device_get_drvdata(indio_dev);
+ 	struct inv_icm45600_sensor_state *gyro_st = iio_priv(indio_dev);
+-	struct inv_sensors_timestamp *ts = &gyro_st->ts;
++	struct inv_icm45600_timestamp *ts = &gyro_st->ts;
+ 	struct inv_icm45600_sensor_conf conf = INV_ICM45600_SENSOR_CONF_KEEP_VALUES;
+ 	int ret;
+ 
+ 	conf.odr = odr;
+-	ret = inv_sensors_timestamp_update_odr(ts, inv_icm45600_odr_to_period(conf.odr),
++	ret = inv_icm45600_timestamp_update_odr(ts, inv_icm45600_odr_to_period(conf.odr),
+ 						iio_buffer_enabled(indio_dev));
+ 	if (ret)
+ 		return ret;
+@@ -557,10 +557,10 @@ static int inv_icm45600_gyro_read_raw(struct iio_dev *indio_dev,
+ 
+ 	switch (mask) {
+ 	case IIO_CHAN_INFO_RAW:
+-		if (!iio_device_claim_direct(indio_dev))
++		if (iio_device_claim_direct_mode(indio_dev))
+ 			return -EBUSY;
+ 		ret = inv_icm45600_gyro_read_sensor(indio_dev, chan, val);
+-		iio_device_release_direct(indio_dev);
++		iio_device_release_direct_mode(indio_dev);
+ 		if (ret)
+ 			return ret;
+ 		return IIO_VAL_INT;
+@@ -617,18 +617,18 @@ static int inv_icm45600_gyro_write_raw(struct iio_dev *indio_dev,
+ 
+ 	switch (mask) {
+ 	case IIO_CHAN_INFO_SCALE:
+-		if (!iio_device_claim_direct(indio_dev))
++		if (iio_device_claim_direct_mode(indio_dev))
+ 			return -EBUSY;
+ 		ret = inv_icm45600_gyro_write_scale(indio_dev, val, val2);
+-		iio_device_release_direct(indio_dev);
++		iio_device_release_direct_mode(indio_dev);
+ 		return ret;
+ 	case IIO_CHAN_INFO_SAMP_FREQ:
+ 		return inv_icm45600_gyro_write_odr(indio_dev, val, val2);
+ 	case IIO_CHAN_INFO_CALIBBIAS:
+-		if (!iio_device_claim_direct(indio_dev))
++		if (iio_device_claim_direct_mode(indio_dev))
+ 			return -EBUSY;
+ 		ret = inv_icm45600_gyro_write_offset(st, chan, val, val2);
+-		iio_device_release_direct(indio_dev);
++		iio_device_release_direct_mode(indio_dev);
+ 		return ret;
+ 	default:
+ 		return -EINVAL;
+@@ -698,7 +698,7 @@ struct iio_dev *inv_icm45600_gyro_init(struct inv_icm45600_state *st)
+ {
+ 	struct device *dev = regmap_get_device(st->map);
+ 	struct inv_icm45600_sensor_state *gyro_st;
+-	struct inv_sensors_timestamp_chip ts_chip;
++	struct inv_icm45600_timestamp_chip ts_chip;
+ 	struct iio_dev *indio_dev;
+ 	const char *name;
+ 	int ret;
+@@ -725,7 +725,7 @@ struct iio_dev *inv_icm45600_gyro_init(struct inv_icm45600_state *st)
+ 	ts_chip.clock_period = 31250;
+ 	ts_chip.jitter = 20;
+ 	ts_chip.init_period = inv_icm45600_odr_to_period(st->conf.gyro.odr);
+-	inv_sensors_timestamp_init(&gyro_st->ts, &ts_chip);
++	inv_icm45600_timestamp_init(&gyro_st->ts, &ts_chip);
+ 
+ 	iio_device_set_drvdata(indio_dev, st);
+ 	indio_dev->name = name;
+@@ -752,7 +752,7 @@ int inv_icm45600_gyro_parse_fifo(struct iio_dev *indio_dev)
+ {
+ 	struct inv_icm45600_state *st = iio_device_get_drvdata(indio_dev);
+ 	struct inv_icm45600_sensor_state *gyro_st = iio_priv(indio_dev);
+-	struct inv_sensors_timestamp *ts = &gyro_st->ts;
++	struct inv_icm45600_timestamp *ts = &gyro_st->ts;
+ 	ssize_t i, size;
+ 	unsigned int no;
+ 
+@@ -777,14 +777,18 @@ int inv_icm45600_gyro_parse_fifo(struct iio_dev *indio_dev)
+ 
+ 		/* update odr */
+ 		if (odr & INV_ICM45600_SENSOR_GYRO)
+-			inv_sensors_timestamp_apply_odr(ts, st->fifo.period,
++			inv_icm45600_timestamp_apply_odr(ts, st->fifo.period,
+ 							st->fifo.nb.total, no);
+ 
+ 		memcpy(&buffer.gyro, gyro, sizeof(buffer.gyro));
+ 		/* convert 8 bits FIFO temperature in high resolution format */
+ 		buffer.temp = temp ? (*temp * 64) : 0;
+-		ts_val = inv_sensors_timestamp_pop(ts);
+-		iio_push_to_buffers_with_ts(indio_dev, &buffer, sizeof(buffer), ts_val);
++		ts_val = inv_icm45600_timestamp_pop(ts);
++		if (unlikely(sizeof(buffer) < indio_dev->scan_bytes)) {
++			dev_err(&indio_dev->dev, "Undersized storage pushed to buffer\n");
++			return -ENOSPC;
++		}
++		iio_push_to_buffers_with_timestamp(indio_dev, &buffer, ts_val);
+ 	}
+ 
+ 	return 0;
+diff --git a/drivers/iio/imu/inv_icm45600/inv_icm45600_i2c.c b/drivers/iio/imu/inv_icm45600/inv_icm45600_i2c.c
+index 5ebc181..fe4b0be 100644
+--- a/drivers/iio/imu/inv_icm45600/inv_icm45600_i2c.c
++++ b/drivers/iio/imu/inv_icm45600/inv_icm45600_i2c.c
+@@ -95,4 +95,4 @@ module_i2c_driver(inv_icm45600_driver);
+ MODULE_AUTHOR("InvenSense, Inc.");
+ MODULE_DESCRIPTION("InvenSense ICM-456xx I2C driver");
+ MODULE_LICENSE("GPL");
+-MODULE_IMPORT_NS("IIO_ICM45600");
++MODULE_IMPORT_NS(IIO_ICM45600);
+diff --git a/drivers/iio/imu/inv_icm45600/inv_icm45600_i3c.c b/drivers/iio/imu/inv_icm45600/inv_icm45600_i3c.c
+index 9247eae..5c274aa 100644
+--- a/drivers/iio/imu/inv_icm45600/inv_icm45600_i3c.c
++++ b/drivers/iio/imu/inv_icm45600/inv_icm45600_i3c.c
+@@ -76,4 +76,4 @@ module_i3c_driver(inv_icm45600_driver);
+ MODULE_AUTHOR("Remi Buisson <remi.buisson@tdk.com>");
+ MODULE_DESCRIPTION("InvenSense ICM-456xx i3c driver");
+ MODULE_LICENSE("GPL");
+-MODULE_IMPORT_NS("IIO_ICM45600");
++MODULE_IMPORT_NS(IIO_ICM45600);
+diff --git a/drivers/iio/imu/inv_icm45600/inv_icm45600_spi.c b/drivers/iio/imu/inv_icm45600/inv_icm45600_spi.c
+index 6288113..73c88e2 100644
+--- a/drivers/iio/imu/inv_icm45600/inv_icm45600_spi.c
++++ b/drivers/iio/imu/inv_icm45600/inv_icm45600_spi.c
+@@ -105,4 +105,4 @@ module_spi_driver(inv_icm45600_driver);
+ MODULE_AUTHOR("InvenSense, Inc.");
+ MODULE_DESCRIPTION("InvenSense ICM-456xx SPI driver");
+ MODULE_LICENSE("GPL");
+-MODULE_IMPORT_NS("IIO_ICM45600");
++MODULE_IMPORT_NS(IIO_ICM45600);
+diff --git a/drivers/iio/imu/inv_icm45600/inv_icm45600_timestamp.c b/drivers/iio/imu/inv_icm45600/inv_icm45600_timestamp.c
+new file mode 100644
+index 0000000..3064611
+--- /dev/null
++++ b/drivers/iio/imu/inv_icm45600/inv_icm45600_timestamp.c
+@@ -0,0 +1,198 @@
++// SPDX-License-Identifier: GPL-2.0-or-later
++/*
++ * Copyright (C) 2020 Invensense, Inc.
++ */
++
++#include <linux/errno.h>
++#include <linux/kernel.h>
++#include <linux/math64.h>
++#include <linux/module.h>
++
++#include "inv_icm45600_timestamp.h"
++
++/* compute jitter, min and max following jitter in per mille */
++#define INV_SENSORS_TIMESTAMP_JITTER(_val, _jitter)		\
++	(div_s64((_val) * (_jitter), 1000))
++#define INV_SENSORS_TIMESTAMP_MIN(_val, _jitter)		\
++	(((_val) * (1000 - (_jitter))) / 1000)
++#define INV_SENSORS_TIMESTAMP_MAX(_val, _jitter)		\
++	(((_val) * (1000 + (_jitter))) / 1000)
++
++/* Add a new value inside an accumulator and update the estimate value */
++static void inv_update_acc(struct inv_icm45600_timestamp_acc *acc, uint32_t val)
++{
++	uint64_t sum = 0;
++	size_t i;
++
++	acc->values[acc->idx++] = val;
++	if (acc->idx >= ARRAY_SIZE(acc->values))
++		acc->idx = 0;
++
++	/* compute the mean of all stored values, use 0 as empty slot */
++	for (i = 0; i < ARRAY_SIZE(acc->values); ++i) {
++		if (acc->values[i] == 0)
++			break;
++		sum += acc->values[i];
++	}
++
++	acc->val = div_u64(sum, i);
++}
++
++void inv_icm45600_timestamp_init(struct inv_icm45600_timestamp *ts,
++				const struct inv_icm45600_timestamp_chip *chip)
++{
++	memset(ts, 0, sizeof(*ts));
++
++	/* save chip parameters and compute min and max clock period */
++	ts->chip = *chip;
++	ts->min_period = INV_SENSORS_TIMESTAMP_MIN(chip->clock_period, chip->jitter);
++	ts->max_period = INV_SENSORS_TIMESTAMP_MAX(chip->clock_period, chip->jitter);
++
++	/* current multiplier and period values after reset */
++	ts->mult = chip->init_period / chip->clock_period;
++	ts->period = chip->init_period;
++
++	/* use theoretical value for chip period */
++	inv_update_acc(&ts->chip_period, chip->clock_period);
++}
++
++int inv_icm45600_timestamp_update_odr(struct inv_icm45600_timestamp *ts,
++				     uint32_t period, bool fifo)
++{
++	uint32_t mult;
++
++	/* when FIFO is on, prevent odr change if one is already pending */
++	if (fifo && ts->new_mult != 0)
++		return -EAGAIN;
++
++	mult = period / ts->chip.clock_period;
++	if (mult != ts->mult)
++		ts->new_mult = mult;
++
++	/* When FIFO is off, directly apply the new ODR */
++	if (!fifo)
++		inv_icm45600_timestamp_apply_odr(ts, 0, 0, 0);
++
++	return 0;
++}
++
++static bool inv_validate_period(struct inv_icm45600_timestamp *ts, uint32_t period)
++{
++	uint32_t period_min, period_max;
++
++	/* check that period is acceptable */
++	period_min = ts->min_period * ts->mult;
++	period_max = ts->max_period * ts->mult;
++	if (period > period_min && period < period_max)
++		return true;
++	else
++		return false;
++}
++
++static bool inv_update_chip_period(struct inv_icm45600_timestamp *ts,
++				   uint32_t period)
++{
++	uint32_t new_chip_period;
++
++	if (!inv_validate_period(ts, period))
++		return false;
++
++	/* update chip internal period estimation */
++	new_chip_period = period / ts->mult;
++	inv_update_acc(&ts->chip_period, new_chip_period);
++	ts->period = ts->mult * ts->chip_period.val;
++
++	return true;
++}
++
++static void inv_align_timestamp_it(struct inv_icm45600_timestamp *ts)
++{
++	const int64_t period_min = (int64_t)ts->min_period * ts->mult;
++	const int64_t period_max = (int64_t)ts->max_period * ts->mult;
++	int64_t add_max, sub_max;
++	int64_t delta, jitter;
++	int64_t adjust;
++
++	/* delta time between last sample and last interrupt */
++	delta = ts->it.lo - ts->timestamp;
++
++	/* adjust timestamp while respecting jitter */
++	add_max = period_max - (int64_t)ts->period;
++	sub_max = period_min - (int64_t)ts->period;
++	jitter = INV_SENSORS_TIMESTAMP_JITTER((int64_t)ts->period, ts->chip.jitter);
++	if (delta > jitter)
++		adjust = add_max;
++	else if (delta < -jitter)
++		adjust = sub_max;
++	else
++		adjust = 0;
++
++	ts->timestamp += adjust;
++}
++
++void inv_icm45600_timestamp_interrupt(struct inv_icm45600_timestamp *ts,
++				     size_t sample_nb, int64_t timestamp)
++{
++	struct inv_icm45600_timestamp_interval *it;
++	int64_t delta, interval;
++	uint32_t period;
++	bool valid = false;
++
++	if (sample_nb == 0)
++		return;
++
++	/* update interrupt timestamp and compute chip and sensor periods */
++	it = &ts->it;
++	it->lo = it->up;
++	it->up = timestamp;
++	delta = it->up - it->lo;
++	if (it->lo != 0) {
++		/* compute period: delta time divided by number of samples */
++		period = div_s64(delta, sample_nb);
++		valid = inv_update_chip_period(ts, period);
++	}
++
++	/* no previous data, compute theoritical value from interrupt */
++	if (ts->timestamp == 0) {
++		/* elapsed time: sensor period * sensor samples number */
++		interval = (int64_t)ts->period * (int64_t)sample_nb;
++		ts->timestamp = it->up - interval;
++		return;
++	}
++
++	/* if interrupt interval is valid, sync with interrupt timestamp */
++	if (valid)
++		inv_align_timestamp_it(ts);
++}
++
++void inv_icm45600_timestamp_apply_odr(struct inv_icm45600_timestamp *ts,
++				     uint32_t fifo_period, size_t fifo_nb,
++				     unsigned int fifo_no)
++{
++	int64_t interval;
++	uint32_t fifo_mult;
++
++	if (ts->new_mult == 0)
++		return;
++
++	/* update to new multiplier and update period */
++	ts->mult = ts->new_mult;
++	ts->new_mult = 0;
++	ts->period = ts->mult * ts->chip_period.val;
++
++	/*
++	 * After ODR change the time interval with the previous sample is
++	 * undertermined (depends when the change occures). So we compute the
++	 * timestamp from the current interrupt using the new FIFO period, the
++	 * total number of samples and the current sample numero.
++	 */
++	if (ts->timestamp != 0) {
++		/* compute measured fifo period */
++		fifo_mult = fifo_period / ts->chip.clock_period;
++		fifo_period = fifo_mult * ts->chip_period.val;
++		/* computes time interval between interrupt and this sample */
++		interval = (int64_t)(fifo_nb - fifo_no) * (int64_t)fifo_period;
++		ts->timestamp = ts->it.up - interval;
++	}
++}
++
+diff --git a/drivers/iio/imu/inv_icm45600/inv_icm45600_timestamp.h b/drivers/iio/imu/inv_icm45600/inv_icm45600_timestamp.h
+new file mode 100644
+index 0000000..10b4867
+--- /dev/null
++++ b/drivers/iio/imu/inv_icm45600/inv_icm45600_timestamp.h
+@@ -0,0 +1,94 @@
++/* SPDX-License-Identifier: GPL-2.0-or-later */
++/*
++ * Copyright (C) 2020 Invensense, Inc.
++ */
++
++#ifndef INV_ICM45600_TIMESTAMP_H_
++#define INV_ICM45600_TIMESTAMP_H_
++
++/**
++ * struct inv_icm45600_timestamp_chip - chip internal properties
++ * @clock_period:	internal clock period in ns
++ * @jitter:		acceptable jitter in per-mille
++ * @init_period:	chip initial period at reset in ns
++ */
++struct inv_icm45600_timestamp_chip {
++	uint32_t clock_period;
++	uint32_t jitter;
++	uint32_t init_period;
++};
++
++/**
++ * struct inv_icm45600_timestamp_interval - timestamps interval
++ * @lo:	interval lower bound
++ * @up:	interval upper bound
++ */
++struct inv_icm45600_timestamp_interval {
++	int64_t lo;
++	int64_t up;
++};
++
++/**
++ * struct inv_icm45600_timestamp_acc - accumulator for computing an estimation
++ * @val:	current estimation of the value, the mean of all values
++ * @idx:	current index of the next free place in values table
++ * @values:	table of all measured values, use for computing the mean
++ */
++struct inv_icm45600_timestamp_acc {
++	uint32_t val;
++	size_t idx;
++	uint32_t values[32];
++};
++
++/**
++ * struct inv_icm45600_timestamp - timestamp management states
++ * @chip:		chip internal characteristics
++ * @min_period:		minimal acceptable clock period
++ * @max_period:		maximal acceptable clock period
++ * @it:			interrupts interval timestamps
++ * @timestamp:		store last timestamp for computing next data timestamp
++ * @mult:		current internal period multiplier
++ * @new_mult:		new set internal period multiplier (not yet effective)
++ * @period:		measured current period of the sensor
++ * @chip_period:	accumulator for computing internal chip period
++ */
++struct inv_icm45600_timestamp {
++	struct inv_icm45600_timestamp_chip chip;
++	uint32_t min_period;
++	uint32_t max_period;
++	struct inv_icm45600_timestamp_interval it;
++	int64_t timestamp;
++	uint32_t mult;
++	uint32_t new_mult;
++	uint32_t period;
++	struct inv_icm45600_timestamp_acc chip_period;
++};
++
++void inv_icm45600_timestamp_init(struct inv_icm45600_timestamp *ts,
++				const struct inv_icm45600_timestamp_chip *chip);
++
++int inv_icm45600_timestamp_update_odr(struct inv_icm45600_timestamp *ts,
++				     uint32_t period, bool fifo);
++
++void inv_icm45600_timestamp_interrupt(struct inv_icm45600_timestamp *ts,
++				     size_t sample_nb, int64_t timestamp);
++
++static inline int64_t inv_icm45600_timestamp_pop(struct inv_icm45600_timestamp *ts)
++{
++	ts->timestamp += ts->period;
++	return ts->timestamp;
++}
++
++void inv_icm45600_timestamp_apply_odr(struct inv_icm45600_timestamp *ts,
++				     uint32_t fifo_period, size_t fifo_nb,
++				     unsigned int fifo_no);
++
++static inline void inv_icm45600_timestamp_reset(struct inv_icm45600_timestamp *ts)
++{
++	const struct inv_icm45600_timestamp_interval interval_init = {0LL, 0LL};
++
++	ts->it = interval_init;
++	ts->timestamp = 0;
++}
++
++#endif

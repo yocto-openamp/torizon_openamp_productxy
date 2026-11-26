@@ -1,0 +1,24 @@
+Subject: [PATCH] iio: integrate ICM-45600 driver into the 6.6 build
+
+Upstream-Status: Backport [https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=7ff021a3faca4]
+
+--- a/drivers/iio/imu/Kconfig
++++ b/drivers/iio/imu/Kconfig
+@@ -105,6 +105,7 @@ config KMX61
+ 	  be called kmx61.
+ 
+ source "drivers/iio/imu/inv_icm42600/Kconfig"
++source "drivers/iio/imu/inv_icm45600/Kconfig"
+ source "drivers/iio/imu/inv_mpu6050/Kconfig"
+ source "drivers/iio/imu/st_lsm6dsx/Kconfig"
+ source "drivers/iio/imu/st_lsm9ds0/Kconfig"
+--- a/drivers/iio/imu/Makefile
++++ b/drivers/iio/imu/Makefile
+@@ -25,6 +25,7 @@ obj-$(CONFIG_FXOS8700_SPI) += fxos8700_spi.o
+ obj-$(CONFIG_RPMSG_IIO_PEDOMETER) += rpmsg_iio_pedometer.o
+ 
+ obj-y += inv_icm42600/
++obj-y += inv_icm45600/
+ obj-y += inv_mpu6050/
+ 
+ obj-$(CONFIG_KMX61) += kmx61.o
