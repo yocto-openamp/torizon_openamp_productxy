@@ -76,7 +76,10 @@ The lines should have no Linux consumer. /dev/spidev1.0 should no longer
 exist. Verify SPI transfers using the M7 firmware and a logic analyzer;
 the Linux overlay alone does not initialize or test M7 SPI operation.
 
-Do not enable another overlay that re-enables ecspi1 after this overlay.
+Do not enable another overlay that re-enables ecspi1 after this overlay,
+with one intended exception: verdin-imx8mp_icm45686_overlay.dtbo (see below)
+deliberately takes SPI_1 back for Linux. When that overlay is active, the
+M7 firmware must not drive the SPI_1 pins.
 
 SHT40 sensors
 =============
@@ -109,15 +112,72 @@ ICM-45600 IIO driver, including ICM-45686 support. icm45600.cfg enables
 the SPI transport as a module; the I2C and I3C transports remain disabled.
 torizon-docker includes kernel-module-inv-icm45600-spi and its dependencies.
 
-No sensor is instantiated by this layer. A board-specific device-tree
-overlay must describe the SPI controller and chip select, compatible
-"invensense,icm45686", vdd and vddio supplies, and an interrupt named
-"int1". Follow the upstream invensense,icm45600.yaml binding and the
-sensor's electrical requirements. The existing overlay disables ecspi1 for
-Linux and reserves it for the M7; do not attach the Linux driver there
-without changing that ownership arrangement.
+verdin-imx8mp_icm45686_overlay.dtbo instantiates the sensor on Verdin
+SPI_1 (ecspi1) chip select 0, with INT1 on SODIMM_206:
 
-Rebuild and deploy torizon-docker, then verify the module with
-"modinfo inv-icm45600-spi". After wiring the sensor and applying its
-board-specific overlay, check dmesg and /sys/bus/iio/devices/ for the
-accelerometer and gyroscope devices.
+  SPI_1_CLK   X19-1   SODIMM_196  ECSPI1_SCLK
+  SPI_1_MISO  X19-2   SODIMM_198  ECSPI1_MISO
+  SPI_1_MOSI  X19-3   SODIMM_200  ECSPI1_MOSI
+  SPI_1_CS    X19-4   SODIMM_202  ECSPI1 chip select 0
+  INT1        X10-21  SODIMM_206  GPIO1_IO00 ("conversion finished")
+  INT2        X10-18  SODIMM_15   GPIO5_IO05 (described, unused by driver)
+
+SODIMM_15 is Verdin PWM_1; the overlay disables pwm1 so the pad becomes
+an input and cannot drive against the sensor's INT2 output.
+
+These header signals use 1.8V logic: the sensor VDDIO must be supplied
+with 1.8V, and VDD within the sensor's 1.71-3.6V range. The overlay's
+vdd-supply/vddio-supply reference the always-on +V3.3_SW and +V1.8_SW
+carrier rails only to satisfy the binding; wire the breakout accordingly.
+
+The overlay re-enables ecspi1 for Linux, so it supersedes the SPI_1 M7
+handoff of verdin-imx8mp_spi1-gpio_overlay.dtbo and must be listed after
+it (as done in uEnv.txt and the TEZI boot overlay list). The M7 firmware
+must not drive the SPI_1 pins while this overlay is active. The Mallow
+TPM on chip select 1 becomes visible again.
+
+Reading the ICM-45686
+=====================
+
+After rebuilding and deploying torizon-docker, verify module and probe:
+
+  modinfo inv-icm45600-spi
+  dmesg | grep -i icm45
+  grep . /sys/bus/iio/devices/iio:device*/name
+
+The driver registers two IIO devices, icm45686-accel and icm45686-gyro.
+Below, $A and $G are their /sys/bus/iio/devices/iio:deviceN directories.
+
+One-shot readings (sysfs, polled):
+
+  cat $A/in_accel_x_raw $A/in_accel_y_raw $A/in_accel_z_raw
+  cat $A/in_accel_scale            # acceleration = raw * scale [m/s^2]
+  cat $G/in_anglvel_x_raw $G/in_anglvel_y_raw $G/in_anglvel_z_raw
+  cat $G/in_anglvel_scale          # rate = raw * scale [rad/s]
+  cat $A/in_temp_raw $A/in_temp_offset $A/in_temp_scale
+                                   # T = (raw + offset) * scale [m°C]
+
+Sampling rate (per device, in Hz):
+
+  cat $A/sampling_frequency_available
+  echo 100 > $A/sampling_frequency
+
+Buffered capture via FIFO and INT1 (example: accelerometer X/Y/Z with
+timestamps, 32 samples):
+
+  echo 1 > $A/scan_elements/in_accel_x_en
+  echo 1 > $A/scan_elements/in_accel_y_en
+  echo 1 > $A/scan_elements/in_accel_z_en
+  echo 1 > $A/scan_elements/in_timestamp_en
+  echo 32 > $A/buffer/length
+  echo 1 > $A/buffer/enable
+  cat /dev/iio:deviceN | xxd | head    # binary records per scan_elements
+  echo 0 > $A/buffer/enable
+
+Record layout follows the in_*_type and in_*_index attributes in
+scan_elements (little-endian 16-bit samples plus a 64-bit timestamp).
+Tools such as iio_info/iio_readdev (libiio, not in the image) or the
+kernel's iio_generic_buffer can decode the stream.
+
+Do not keep the sysfs raw attributes and the buffer in use at the same
+time; raw reads return -EBUSY while the buffer is enabled.

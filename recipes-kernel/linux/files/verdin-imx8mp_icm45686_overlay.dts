@@ -1,0 +1,67 @@
+// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
+/*
+ * Verdin iMX8MP on Mallow: TDK InvenSense ICM-45686 IMU on SPI_1 (ecspi1).
+ *
+ * Wiring (Mallow extension headers):
+ *   SPI_1_CLK   X19-1   SODIMM_196  ECSPI1_SCLK
+ *   SPI_1_MISO  X19-2   SODIMM_198  ECSPI1_MISO
+ *   SPI_1_MOSI  X19-3   SODIMM_200  ECSPI1_MOSI
+ *   SPI_1_CS    X19-4   SODIMM_202  ECSPI1 chip select 0 (GPIO5_IO09)
+ *   INT1        X10-21  SODIMM_206  GPIO1_IO00 ("conversion finished")
+ *   INT2        X10-18  SODIMM_15   GPIO5_IO05 (unused by the driver)
+ *
+ * SODIMM_15 is Verdin PWM_1, which the Mallow tree enables: pwm1 is
+ * disabled below so the pad can be an input and PWM1_OUT cannot drive
+ * against the sensor's INT2 output.
+ *
+ * These header signals are 1.8V logic: the sensor VDDIO must be 1.8V.
+ * vdd-supply/vddio-supply reference the always-on carrier rails +V3.3_SW
+ * and +V1.8_SW; they satisfy the binding but do not switch the sensor.
+ *
+ * This overlay re-enables ecspi1 for Linux and therefore supersedes the
+ * SPI_1 M7 handoff done by verdin-imx8mp_spi1-gpio_overlay.dtbo. It must
+ * be listed after that overlay. The M7 firmware must no longer drive the
+ * SPI_1 pins. The Mallow TPM on chip select 1 becomes visible again.
+ */
+/dts-v1/;
+/plugin/;
+
+#include "imx8mp-pinfunc.h"
+#include <dt-bindings/interrupt-controller/irq.h>
+
+/ {
+	compatible = "toradex,verdin-imx8mp";
+};
+
+&iomuxc {
+	pinctrl_icm45686_int: icm45686intgrp {
+		fsl,pins =
+			<MX8MP_IOMUXC_GPIO1_IO00__GPIO1_IO00	0x184>,	/* SODIMM_206, X10-21, INT1 */
+			<MX8MP_IOMUXC_SPDIF_EXT_CLK__GPIO5_IO05	0x184>;	/* SODIMM_15,  X10-18, INT2 */
+	};
+};
+
+/* Verdin PWM_1: release SODIMM_15 for the sensor INT2 input. */
+&pwm1 {
+	status = "disabled";
+};
+
+/* Verdin SPI_1: pinctrl, cs-gpios and the TPM come from the Mallow base tree. */
+&ecspi1 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	status = "okay";
+
+	imu@0 {
+		compatible = "invensense,icm45686";
+		reg = <0>;
+		spi-max-frequency = <10000000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_icm45686_int>;
+		interrupts-extended = <&gpio1 0 IRQ_TYPE_EDGE_RISING>,
+				      <&gpio5 5 IRQ_TYPE_EDGE_RISING>;
+		interrupt-names = "int1", "int2";
+		vdd-supply = <&reg_3p3v>;
+		vddio-supply = <&reg_1p8v>;
+	};
+};

@@ -21,6 +21,7 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 SRC_URI:append:verdin-imx8mp = " \
 	file://verdin-imx8mp_spi1-gpio_overlay.dts \
+	file://verdin-imx8mp_icm45686_overlay.dts \
 	file://verdin-imx8mp_sht40_overlay.dts \
 	file://verdin-imx8mp_uart1_rts_cts_to_gpio_overlay.dts \
 	file://verdin-imx8mp_uart2_rts_cts_to_gpio_overlay.dts \
@@ -34,6 +35,7 @@ SRC_URI:append:verdin-imx8mp = " \
 
 do_collect_overlays:append:verdin-imx8mp() {
 	install -m 0644 ${WORKDIR}/verdin-imx8mp_spi1-gpio_overlay.dts ${DT_FILES_PATH}/
+	install -m 0644 ${WORKDIR}/verdin-imx8mp_icm45686_overlay.dts ${DT_FILES_PATH}/
 	install -m 0644 ${WORKDIR}/verdin-imx8mp_sht40_overlay.dts ${DT_FILES_PATH}/
 	install -m 0644 ${WORKDIR}/verdin-imx8mp_uart1_rts_cts_to_gpio_overlay.dts ${DT_FILES_PATH}/
 	install -m 0644 ${WORKDIR}/verdin-imx8mp_uart2_rts_cts_to_gpio_overlay.dts ${DT_FILES_PATH}/
@@ -48,6 +50,7 @@ do_collect_overlays:append:verdin-imx8mp() {
 TEZI_EXTERNAL_KERNEL_DEVICETREE_BOOT:append:verdin-imx8mp = " \
 	verdin-imx8mp_hmp_overlay.dtbo \
 	verdin-imx8mp_spi1-gpio_overlay.dtbo \
+	verdin-imx8mp_icm45686_overlay.dtbo \
 	verdin-imx8mp_sht40_overlay.dtbo \
 	verdin-imx8mp_uart1_rts_cts_to_gpio_overlay.dtbo \
 	verdin-imx8mp_uart2_rts_cts_to_gpio_overlay.dtbo \
